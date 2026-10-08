@@ -81,7 +81,7 @@ a { color: inherit; }
   object-fit: cover;
   object-position: center;
 }
-.hero-title { top: calc(var(--hero-h) - 72px); }
+.hero-title { top: calc(var(--hero-h) - 88px); }
 .hero-title .hero-lead {
   margin: 12px 0 0;
   width: 237px;
@@ -95,7 +95,7 @@ a { color: inherit; }
   white-space: normal;
   font-feature-settings: normal;
 }
-.feature-cards { top: calc(var(--hero-h) + 52px); }
+.feature-cards { top: calc(var(--hero-h) + 44px); }
 .buy-cta {
   position: fixed;
   z-index: 40;
