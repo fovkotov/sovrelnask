@@ -115,7 +115,6 @@ a { color: inherit; }
   line-height: 22px;
   text-decoration: none;
   white-space: nowrap;
-  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.16));
 }
 body:has(#app[hidden]) .buy-cta { display: none !important; }
 @media (max-width: 768px) {
