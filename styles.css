@@ -134,14 +134,6 @@ body:has(#app[hidden]) .buy-cta { display: none !important; }
   gap: 12px;
   padding: 32px 28px;
 }
-.gate-mark {
-  margin: 0 0 18px;
-  font-family: "YS Compressed", sans-serif;
-  font-weight: 700;
-  font-size: 40px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
 .gate-label { align-self: stretch; font-size: 15px; line-height: 22px; color: rgba(48,43,49,0.48); }
 .gate-input {
   width: 100%; height: 56px; border: 0; border-radius: 16px; background: #fff; padding: 0 16px; font-size: 17px; outline: none;
