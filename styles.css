@@ -87,7 +87,7 @@ a { color: inherit; }
   position: fixed;
   z-index: 40;
   left: 50%;
-  bottom: 16px;
+  bottom: 8px;
   transform: translateX(calc(-50% + 0.5px));
   display: flex;
   align-items: center;
@@ -107,7 +107,7 @@ a { color: inherit; }
 body:has(#app[hidden]) .buy-cta { display: none !important; }
 @media (max-width: 768px) {
   .buy-cta {
-    bottom: calc(16px * 100vw / 375px);
+    bottom: 8px;
     transform: translateX(calc(-50% + 0.5px)) scale(calc(100vw / 375px));
     transform-origin: center bottom;
   }
