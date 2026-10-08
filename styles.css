@@ -82,7 +82,20 @@ a { color: inherit; }
   object-position: center;
 }
 .hero-title { top: calc(var(--hero-h) - 72px); }
-.feature-cards { top: calc(var(--hero-h) + 35px); }
+.hero-title .hero-lead {
+  margin: 12px 0 0;
+  width: 237px;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: 0;
+  text-align: center;
+  color: rgba(48, 43, 49, 0.48);
+  white-space: normal;
+  font-feature-settings: normal;
+}
+.feature-cards { top: calc(var(--hero-h) + 52px); }
 .buy-cta {
   position: fixed;
   z-index: 40;
