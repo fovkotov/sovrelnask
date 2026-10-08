@@ -51,6 +51,80 @@ a { color: inherit; }
 .art p { margin: 0; }
 .layer { position: relative; z-index: 2; }
 .layer a { pointer-events: auto; text-decoration: none; }
+:root { --hero-h: calc(100vh - 80px); }
+@media (max-width: 768px) {
+  :root { --hero-h: calc((100vh - 80px) / (100vw / 375px)); }
+}
+.hero-photo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 375px;
+  height: var(--hero-h);
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero-rot {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 375px;
+  height: max(1316.208px, var(--hero-h));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-rot img {
+  flex: none;
+  width: max(1316.208px, var(--hero-h));
+  height: 375px;
+  transform: rotate(90deg);
+}
+.hero-title { top: calc(var(--hero-h) - 190px); }
+.hero-lead {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--hero-h) - 114px);
+  width: 237px;
+  transform: translateX(-50%);
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.48);
+}
+.feature-cards { top: calc(var(--hero-h) + 35px); }
+.buy-cta {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(calc(-50% + 0.5px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 18px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 24px;
+  background: #a38aff;
+  color: #fff;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 22px;
+  text-decoration: none;
+  white-space: nowrap;
+  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.16));
+}
+body:has(#app[hidden]) .buy-cta { display: none !important; }
+@media (max-width: 768px) {
+  .buy-cta {
+    bottom: calc(16px * 100vw / 375px);
+    transform: translateX(calc(-50% + 0.5px)) scale(calc(100vw / 375px));
+    transform-origin: center bottom;
+  }
+}
 .gate:not([hidden]) {
   min-height: 100dvh;
   display: flex;
