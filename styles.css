@@ -1,0 +1,79 @@
+
+@font-face {
+  font-family: "YS Text Compact";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/YSTextCompact-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "YS Text Compact";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/YSTextCompact-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "YS Compressed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/YSCompressed-Bold.otf") format("opentype");
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body {
+  margin: 0;
+  background: #c5cbd6;
+  color: rgba(48, 43, 49, 0.9);
+  font-family: "YS Text Compact", sans-serif;
+  overflow-x: hidden;
+}
+button, input { font: inherit; color: inherit; }
+a { color: inherit; }
+.stage {
+  width: 375px;
+  margin: 0 auto;
+  background: #dbdfe7;
+}
+@media (max-width: 768px) {
+  .stage { zoom: calc(100vw / 375px); }
+}
+.art {
+  position: relative;
+  width: 375px;
+  height: 19988px;
+  overflow: hidden;
+  background: #dbdfe7;
+}
+.art img { max-width: none; }
+.art, .art * { overflow-wrap: normal !important; word-break: normal !important; }
+.art p { margin: 0; }
+.layer { position: relative; z-index: 2; }
+.layer a { pointer-events: auto; text-decoration: none; }
+.gate:not([hidden]) {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 28px;
+}
+.gate-mark {
+  margin: 0 0 18px;
+  font-family: "YS Compressed", sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.gate-label { align-self: stretch; font-size: 15px; line-height: 22px; color: rgba(48,43,49,0.48); }
+.gate-input {
+  width: 100%; height: 56px; border: 0; border-radius: 16px; background: #fff; padding: 0 16px; font-size: 17px; outline: none;
+}
+.gate-error { margin: 0; align-self: stretch; color: #f8604a; font-size: 15px; }
+.gate-submit {
+  width: 100%; height: 56px; margin-top: 8px; border: 0; border-radius: 20px; background: #fff;
+  font-weight: 500; font-size: 21px; cursor: pointer;
+}

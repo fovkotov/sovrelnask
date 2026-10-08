@@ -1,0 +1,35 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="173.326" height="233.929" viewBox="0 0 173.326 233.929" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 3">
+<path id="Vector 63" d="M50.9514 215.165L47.0084 222.908L63.894 230.196L67.3654 222.357L50.9514 215.165Z" fill="#7A55FF"/>
+<path id="Vector 71" d="M34.3181 41.5613L34.883 49.4639L51.4999 47.2082L50.5213 39.4522L34.3181 41.5613Z" fill="#7A55FF"/>
+<g id="Vector 70" opacity="0.2" filter="url(#filter0_f_5316_232521)">
+<path d="M89.8887 130.588L85.9897 138.245L102.687 145.451L106.119 137.7L89.8887 130.588Z" fill="#7A55FF"/>
+</g>
+<path id="Vector 72" d="M121.428 73.1759L127.408 77.0612L118.397 89.1702L112.713 85.0229L121.428 73.1759Z" fill="#7A55FF"/>
+<g id="Vector 66" filter="url(#filter1_f_5316_232521)">
+<path d="M98.168 152.754L103.785 160.706L119.828 147.772L113.869 140.237L98.168 152.754Z" fill="#7A55FF"/>
+</g>
+<path id="Vector 78" opacity="0.5" d="M77.4019 2.70039L74.462 8.47347L87.052 13.9074L89.6402 8.06239L77.4019 2.70039Z" fill="#7A55FF"/>
+<g id="Vector 74" filter="url(#filter2_f_5316_232521)">
+<path d="M148.278 101.074L144.55 108.394L160.513 115.284L163.795 107.872L148.278 101.074Z" fill="#7A55FF"/>
+</g>
+<path id="Vector 75" d="M11.7647 151.898L4.29332 155.312L12.5096 170.635L19.6886 166.872L11.7647 151.898Z" fill="#7A55FF"/>
+</g>
+<defs>
+<filter id="filter0_f_5316_232521" x="70.8999" y="115.499" width="50.3093" height="45.0427" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="7.5449" result="effect1_foregroundBlur_5316_232521"/>
+</filter>
+<filter id="filter1_f_5316_232521" x="88.6376" y="130.706" width="40.7208" height="39.53" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="4.7652" result="effect1_foregroundBlur_5316_232521"/>
+</filter>
+<filter id="filter2_f_5316_232521" x="135.019" y="91.5433" width="38.3061" height="33.2708" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="4.7652" result="effect1_foregroundBlur_5316_232521"/>
+</filter>
+</defs>
+</svg>
