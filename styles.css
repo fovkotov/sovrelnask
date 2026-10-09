@@ -675,3 +675,177 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .hardware-list p {
   line-height: 30px;
 }
+
+/* Oval memory cards: the scrollport is the 375 column, first card inset 24px so .art does not clip its left edge. */
+.memory-slider {
+  position: absolute;
+  left: 0;
+  top: 1100px;
+  width: 375px;
+  height: 570px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-left: 24px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.memory-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.memory-slider.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+}
+.memory-slider:focus { outline: none; }
+.memory-slider:focus-visible {
+  outline: 2px solid rgba(48, 43, 49, 0.35);
+  outline-offset: 2px;
+}
+.memory-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: max-content;
+  min-height: 100%;
+  padding: 0 32px 0 24px;
+}
+.memory-card {
+  flex: 0 0 320px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  scroll-snap-align: start;
+}
+.memory-photo {
+  position: relative;
+  width: 320px;
+  height: 440px;
+  flex: none;
+}
+.memory-bed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleY(-1);
+}
+.memory-oval {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: url("./assets/fig/37689a4f96456f1ecdb67aedc9279f51d47dd123.png");
+  mask-image: url("./assets/fig/37689a4f96456f1ecdb67aedc9279f51d47dd123.png");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.memory-fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleY(-1);
+}
+.memory-rnd {
+  position: absolute;
+  left: -20.393px;
+  top: 23.43px;
+  width: 133.175px;
+  height: 165.45px;
+  overflow: hidden;
+}
+.memory-rnd img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 195.41%;
+  height: 157.29%;
+  max-width: none;
+}
+.memory-pin {
+  position: absolute;
+  left: 215.922px;
+  top: 74.844px;
+  width: 66.069px;
+  height: 88.092px;
+  object-fit: fill;
+  object-position: bottom;
+}
+.memory-ios {
+  position: absolute;
+  left: 120.313px;
+  top: 96.316px;
+  width: 41.41px;
+  height: 41.41px;
+  background: #fff;
+  border-radius: 10.353px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.memory-ios img {
+  position: absolute;
+  left: 6.107px;
+  top: 6.137px;
+  width: 29.197px;
+  height: 29.197px;
+  transform: scaleX(-1);
+}
+.memory-mac {
+  position: absolute;
+  left: 123.611px;
+  top: 66.316px;
+  width: 121.486px;
+  height: 121.486px;
+}
+.memory-station {
+  position: absolute;
+  left: -24px;
+  top: 52.293px;
+  width: 368px;
+  height: 365.169px;
+  object-fit: cover;
+}
+.memory-bubble {
+  position: absolute;
+  left: 48px;
+  top: 178.02px;
+  width: 225px;
+  padding: 13.559px 16.572px 15.066px;
+  background: #fff;
+  border-radius: 24.105px 6.026px 24.105px 24.105px;
+  z-index: 1;
+}
+.memory-bubble img {
+  position: absolute;
+  left: 16.57px;
+  top: 15.07px;
+  width: 15.066px;
+  height: 15.066px;
+}
+.memory-bubble p {
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 10.78px;
+  line-height: 13.619px;
+  color: #1e2026;
+  text-indent: 24.13px;
+}
+.memory-caption {
+  padding: 0 16px;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+  color: rgba(48, 43, 49, 0.9);
+}
+.memory-slider img {
+  -webkit-user-drag: none;
+  user-select: none;
+}

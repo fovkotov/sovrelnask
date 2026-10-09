@@ -493,3 +493,140 @@ function initPlansSlider() {
 }
 
 initPlansSlider();
+initMemorySlider();
+
+function initMemorySlider() {
+  const root = document.querySelector("[data-memory-slider]");
+  if (!root) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const step = 324;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let origin = 0;
+  let axis = null;
+  let dragging = false;
+  let lastX = 0;
+  let lastT = 0;
+  let velocity = 0;
+  let frame = 0;
+  let wheelTimer = 0;
+
+  function zoom() {
+    const width = root.getBoundingClientRect().width;
+    return root.offsetWidth ? width / root.offsetWidth : 1;
+  }
+
+  function limit() {
+    return Math.max(0, root.scrollWidth - root.clientWidth);
+  }
+
+  function clamp(value) {
+    return Math.min(limit(), Math.max(0, value));
+  }
+
+  function snap() {
+    const target = clamp(Math.round(root.scrollLeft / step) * step);
+    root.scrollTo({ left: target, behavior: reduce.matches ? "auto" : "smooth" });
+  }
+
+  root.addEventListener("pointerdown", (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    cancelAnimationFrame(frame);
+    clearTimeout(wheelTimer);
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    origin = root.scrollLeft;
+    axis = null;
+    dragging = false;
+    lastX = event.clientX;
+    lastT = performance.now();
+    velocity = 0;
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== pointerId) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (!axis) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (axis === "y") {
+        pointerId = null;
+        return;
+      }
+      dragging = true;
+      root.classList.add("is-dragging");
+      root.setPointerCapture(event.pointerId);
+    }
+    if (axis !== "x") return;
+    const now = performance.now();
+    const dt = now - lastT;
+    if (dt > 0) {
+      const instant = (event.clientX - lastX) / dt / zoom();
+      velocity = velocity * 0.65 + instant * 0.35;
+    }
+    lastX = event.clientX;
+    lastT = now;
+    root.scrollLeft = clamp(origin - dx / zoom());
+  });
+
+  function end(event) {
+    if (pointerId === null || event.pointerId !== pointerId) return;
+    const moved = dragging;
+    pointerId = null;
+    dragging = false;
+    axis = null;
+    root.classList.remove("is-dragging");
+    if (!moved) return;
+    if (reduce.matches || Math.abs(velocity) < 0.05) {
+      snap();
+      return;
+    }
+    let v = Math.max(-28, Math.min(28, -velocity * 16));
+    let current = root.scrollLeft;
+    const glide = () => {
+      v *= 0.92;
+      current = clamp(current + v);
+      root.scrollLeft = current;
+      const hit = current <= 0 || current >= limit();
+      if (Math.abs(v) > 0.6 && !hit) frame = requestAnimationFrame(glide);
+      else snap();
+    };
+    frame = requestAnimationFrame(glide);
+  }
+
+  root.addEventListener("pointerup", end);
+  root.addEventListener("pointercancel", end);
+  root.addEventListener("dragstart", (event) => event.preventDefault());
+  root.addEventListener("touchmove", (event) => {
+    if (axis === "x") event.preventDefault();
+  }, { passive: false });
+
+  root.addEventListener("wheel", (event) => {
+    const absX = Math.abs(event.deltaX);
+    const absY = Math.abs(event.deltaY);
+    if (absX <= absY && !event.shiftKey) return;
+    let delta = absX > absY ? event.deltaX : event.deltaY;
+    if (event.deltaMode === 1) delta *= 16;
+    else if (event.deltaMode === 2) delta *= root.clientWidth;
+    cancelAnimationFrame(frame);
+    root.classList.add("is-dragging");
+    root.scrollLeft = clamp(root.scrollLeft + delta / zoom());
+    event.preventDefault();
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => {
+      root.classList.remove("is-dragging");
+      snap();
+    }, 90);
+  }, { passive: false });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const dir = event.key === "ArrowRight" ? 1 : -1;
+    root.scrollTo({ left: clamp(root.scrollLeft + dir * step), behavior: reduce.matches ? "auto" : "smooth" });
+  });
+}
+
