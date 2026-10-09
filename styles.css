@@ -118,6 +118,40 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   object-fit: contain;
   object-position: center bottom;
 }
+.meet-screen-hole {
+  position: absolute;
+  left: 5.3254%;
+  top: 2.5492%;
+  width: 89.2308%;
+  height: 94.9015%;
+  overflow: hidden;
+}
+.meet-screen {
+  position: absolute;
+  left: -5.9682%;
+  top: -2.6862%;
+  width: 112.069%;
+  height: 105.3724%;
+  max-width: none;
+  object-fit: cover;
+  object-position: center;
+}
+.meet-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: fill;
+  pointer-events: none;
+  -webkit-mask-image: url("./assets/fig/phone-bezel.png");
+  mask-image: url("./assets/fig/phone-bezel.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  mask-mode: alpha;
+}
 .meet-caps {
   position: relative;
   flex: none;
