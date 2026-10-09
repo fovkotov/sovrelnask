@@ -368,20 +368,69 @@ function initItogiDrag() {
     maxScroll = Math.max(0, visualH - viewport.clientHeight);
     scroll = Math.min(Math.max(0, scroll), maxScroll);
     ui.style.transform = `translateY(${-scroll}px) scale(${scale})`;
+    if (viewport.scrollTop) viewport.scrollTop = 0;
+    if (viewport.scrollLeft) viewport.scrollLeft = 0;
     const travel = Math.max(0, track.clientHeight - thumb.offsetHeight);
     const y = maxScroll === 0 ? 0 : (scroll / maxScroll) * travel;
     thumb.style.translate = `0 ${y}px`;
     thumb.setAttribute("aria-valuenow", String(maxScroll === 0 ? 0 : Math.round((scroll / maxScroll) * 100)));
   }
 
+  const phone = viewport.closest(".itogi-phone") || viewport;
+  const scrollKeys = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "PageUp", "PageDown", "Home", "End", " ", "Spacebar"]);
   let drag = null;
 
   function blockScroll(event) {
     event.preventDefault();
   }
 
-  viewport.addEventListener("wheel", blockScroll, { passive: false });
-  viewport.addEventListener("touchmove", blockScroll, { passive: false });
+  function inPhone(event) {
+    const node = event.target;
+    return node instanceof Element && (phone.contains(node) || node === phone);
+  }
+
+  function freezeScrolled(event) {
+    const node = event.target;
+    if (!node || node.nodeType !== 1 || node === document.documentElement || node === document.body) return;
+    if (!phone.contains(node) && node !== phone && node !== viewport) return;
+    if (node.scrollTop) node.scrollTop = 0;
+    if (node.scrollLeft) node.scrollLeft = 0;
+  }
+
+  function clipScrollports(root) {
+    const nodes = [root, ...root.querySelectorAll("*")];
+    nodes.forEach((el) => {
+      const style = getComputedStyle(el);
+      const blocks = (value) => value === "auto" || value === "scroll" || value === "hidden";
+      const overflows = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
+      if (overflows && blocks(style.overflowX) && blocks(style.overflowY)) {
+        el.style.setProperty("overflow", "clip", "important");
+      }
+    });
+  }
+
+  [phone, viewport, track].forEach((el) => {
+    el.addEventListener("wheel", blockScroll, { passive: false, capture: true });
+    el.addEventListener("touchmove", blockScroll, { passive: false, capture: true });
+  });
+  phone.addEventListener("touchstart", (event) => {
+    if (inPhone(event)) event.preventDefault();
+  }, { passive: false, capture: true });
+  phone.addEventListener("pointerdown", (event) => {
+    if (inPhone(event)) event.preventDefault();
+  }, { capture: true });
+  phone.addEventListener("pointermove", (event) => {
+    if (event.buttons && inPhone(event)) event.preventDefault();
+  }, { capture: true });
+  phone.addEventListener("dragstart", (event) => {
+    if (inPhone(event)) event.preventDefault();
+  }, { capture: true });
+  phone.addEventListener("keydown", (event) => {
+    if (scrollKeys.has(event.key) && inPhone(event)) event.preventDefault();
+  }, { capture: true });
+  phone.addEventListener("scroll", freezeScrolled, { capture: true });
+  viewport.addEventListener("scroll", freezeScrolled, { capture: true });
+  ui.inert = true;
 
   thumb.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
@@ -426,12 +475,17 @@ function initItogiDrag() {
     layout();
   });
 
+  function relayout() {
+    layout();
+    clipScrollports(viewport);
+  }
+
   ui.querySelectorAll("img").forEach((img) => {
-    if (!img.complete) img.addEventListener("load", layout, { once: true });
+    if (!img.complete) img.addEventListener("load", relayout, { once: true });
   });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
-  window.addEventListener("resize", layout);
-  layout();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  window.addEventListener("resize", relayout);
+  relayout();
 }
 
 function initPlansSlider() {

@@ -658,6 +658,8 @@ body:has(#app[hidden]) .signup { display: none !important; }
   top: 207px;
   width: 251.358px;
   height: 546.486px;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 .itogi-screen {
   position: absolute;
@@ -666,14 +668,31 @@ body:has(#app[hidden]) .signup { display: none !important; }
   width: 89.230769%;
   height: 94.901506%;
   overflow: hidden;
+  overflow: clip;
+  overscroll-behavior: none;
+  overflow-anchor: none;
   border-radius: 35.1px / 37.36px;
   touch-action: none;
   background: #e4f1fd;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .itogi-ui {
   width: 375px;
   transform-origin: 0 0;
   transform: scale(0.5981);
+  pointer-events: none;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.itogi-ui * {
+  pointer-events: none;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .itogi-ui ul {
   margin: 0;
