@@ -40,4 +40,43 @@ function initGate() {
   document.getElementById("gate-pass").focus();
 }
 
+function initSignup() {
+  const openBtn = document.querySelector(".buy-cta");
+  const root = document.getElementById("signup");
+  const form = document.getElementById("signup-form");
+  if (!openBtn || !root || !form) return;
+
+  const email = form.querySelector(".signup-email");
+
+  function openSignup() {
+    root.hidden = false;
+    document.body.style.overflow = "hidden";
+    email.focus();
+  }
+
+  function closeSignup() {
+    if (root.hidden) return;
+    root.hidden = true;
+    document.body.style.overflow = "";
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    openSignup();
+  });
+
+  root.querySelector(".signup-backdrop").addEventListener("click", closeSignup);
+  root.querySelector(".signup-close").addEventListener("click", closeSignup);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeSignup();
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+  });
+}
+
 initGate();
+initSignup();
