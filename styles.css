@@ -709,9 +709,9 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .itogi-track {
   position: absolute;
   left: 338.5px;
-  top: 360.243px;
+  top: 227.742px;
   width: 11px;
-  height: 240px;
+  height: 505px;
   border-radius: 80px;
   background: #fff;
   touch-action: none;
