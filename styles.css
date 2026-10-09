@@ -491,3 +491,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
     bottom: 0;
   }
 }
+.lab-wheel {
+  transform-origin: center center;
+}

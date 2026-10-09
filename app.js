@@ -80,3 +80,50 @@ function initSignup() {
 
 initGate();
 initSignup();
+initLabWheel();
+
+function initLabWheel() {
+  const wheels = [...document.querySelectorAll(".lab-wheel")];
+  const track = document.querySelector(".lab-wheel[data-lab-track]");
+  if (!wheels.length || !track) return;
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const parts = wheels.map((el) => ({ el, base: el.style.transform.trim() }));
+  const turn = 90;
+  let frame = 0;
+
+  function apply() {
+    frame = 0;
+    if (reduce.matches) {
+      for (const { el, base } of parts) el.style.transform = base;
+      return;
+    }
+    const rect = track.getBoundingClientRect();
+    const stage = document.querySelector(".stage");
+    const stageBox = stage.getBoundingClientRect();
+    const zoom = stage.offsetWidth ? stageBox.width / stage.offsetWidth : 1;
+    const height = track.offsetHeight * zoom;
+    const top = rect.top + rect.height / 2 - height / 2;
+    const vh = window.innerHeight;
+    const total = height + vh;
+    const progress = total > 0 ? Math.min(1, Math.max(0, (vh - top) / total)) : 0;
+    const spin = `rotate(${(progress * turn).toFixed(3)}deg)`;
+    for (const { el, base } of parts) {
+      el.style.transform = base ? `${base} ${spin}` : spin;
+    }
+  }
+
+  function requestTick() {
+    if (frame) return;
+    frame = requestAnimationFrame(apply);
+  }
+
+  window.addEventListener("scroll", requestTick, { passive: true });
+  window.addEventListener("resize", requestTick, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("scroll", requestTick, { passive: true });
+    window.visualViewport.addEventListener("resize", requestTick, { passive: true });
+  }
+  reduce.addEventListener("change", requestTick);
+  apply();
+}
