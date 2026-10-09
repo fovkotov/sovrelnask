@@ -81,6 +81,7 @@ function initSignup() {
 initGate();
 initSignup();
 initLabWheel();
+initFooterWheel();
 
 function initLabWheel() {
   const wheels = [...document.querySelectorAll(".lab-wheel")];
@@ -329,10 +330,19 @@ function initItogiDrag() {
 
   let drag = null;
 
+  function blockScroll(event) {
+    event.preventDefault();
+  }
+
+  viewport.addEventListener("wheel", blockScroll, { passive: false });
+  viewport.addEventListener("touchmove", blockScroll, { passive: false });
+
   thumb.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
     thumb.setPointerCapture(event.pointerId);
+    document.documentElement.style.userSelect = "none";
+    document.documentElement.style.webkitUserSelect = "none";
     const zoom = track.offsetHeight ? track.getBoundingClientRect().height / track.offsetHeight : 1;
     const travel = Math.max(0, track.clientHeight - thumb.offsetHeight);
     const origin = maxScroll === 0 ? 0 : (scroll / maxScroll) * travel;
@@ -352,6 +362,8 @@ function initItogiDrag() {
   function endDrag(event) {
     if (!drag || event.pointerId !== drag.id) return;
     drag = null;
+    document.documentElement.style.userSelect = "";
+    document.documentElement.style.webkitUserSelect = "";
   }
 
   thumb.addEventListener("pointerup", endDrag);
@@ -371,6 +383,7 @@ function initItogiDrag() {
   ui.querySelectorAll("img").forEach((img) => {
     if (!img.complete) img.addEventListener("load", layout, { once: true });
   });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
   window.addEventListener("resize", layout);
   layout();
 }
@@ -494,6 +507,139 @@ function initPlansSlider() {
 
 initPlansSlider();
 initMemorySlider();
+initDeviceSlider();
+
+function initDeviceSlider() {
+  const root = document.querySelector("[data-device-slider]");
+  if (!root) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const rest = parseFloat(getComputedStyle(root).getPropertyValue("--device-rest"));
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let origin = 0;
+  let axis = null;
+  let dragging = false;
+  let lastX = 0;
+  let lastT = 0;
+  let velocity = 0;
+  let frame = 0;
+
+  function zoom() {
+    const width = root.getBoundingClientRect().width;
+    return root.offsetWidth ? width / root.offsetWidth : 1;
+  }
+
+  function limit() {
+    return Math.max(0, root.scrollWidth - root.clientWidth);
+  }
+
+  function clamp(value) {
+    return Math.min(limit(), Math.max(0, value));
+  }
+
+  let placed = false;
+  function frameRest() {
+    if (placed || dragging || Number.isNaN(rest) || limit() <= 0) return;
+    root.scrollLeft = clamp(rest);
+    placed = true;
+  }
+
+  frameRest();
+  requestAnimationFrame(frameRest);
+  const app = document.getElementById("app");
+  if (app && app.hidden) {
+    new MutationObserver(frameRest).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  }
+
+  root.addEventListener("pointerdown", (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    cancelAnimationFrame(frame);
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    origin = root.scrollLeft;
+    axis = null;
+    dragging = false;
+    lastX = event.clientX;
+    lastT = performance.now();
+    velocity = 0;
+  });
+
+  root.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== pointerId) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (!axis) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (axis === "y") {
+        pointerId = null;
+        return;
+      }
+      dragging = true;
+      root.classList.add("is-dragging");
+      root.setPointerCapture(event.pointerId);
+    }
+    if (axis !== "x") return;
+    const now = performance.now();
+    const dt = now - lastT;
+    if (dt > 0) {
+      const instant = (event.clientX - lastX) / dt / zoom();
+      velocity = velocity * 0.65 + instant * 0.35;
+    }
+    lastX = event.clientX;
+    lastT = now;
+    root.scrollLeft = clamp(origin - dx / zoom());
+  });
+
+  function end(event) {
+    if (pointerId === null || event.pointerId !== pointerId) return;
+    const moved = dragging;
+    pointerId = null;
+    dragging = false;
+    axis = null;
+    root.classList.remove("is-dragging");
+    if (!moved || reduce.matches || Math.abs(velocity) < 0.05) return;
+    let v = Math.max(-28, Math.min(28, -velocity * 16));
+    let current = root.scrollLeft;
+    const step = () => {
+      v *= 0.92;
+      current = clamp(current + v);
+      root.scrollLeft = current;
+      const hit = current <= 0 || current >= limit();
+      if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+  }
+
+  root.addEventListener("pointerup", end);
+  root.addEventListener("pointercancel", end);
+  root.addEventListener("dragstart", (event) => event.preventDefault());
+  root.addEventListener("touchmove", (event) => {
+    if (axis === "x") event.preventDefault();
+  }, { passive: false });
+
+  root.addEventListener("wheel", (event) => {
+    const absX = Math.abs(event.deltaX);
+    const absY = Math.abs(event.deltaY);
+    if (absX <= absY && !event.shiftKey) return;
+    let delta = absX > absY ? event.deltaX : event.deltaY;
+    if (event.deltaMode === 1) delta *= 16;
+    else if (event.deltaMode === 2) delta *= root.clientWidth;
+    const next = clamp(root.scrollLeft + delta / zoom());
+    if (next === root.scrollLeft) return;
+    root.scrollLeft = next;
+    event.preventDefault();
+  }, { passive: false });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const dir = event.key === "ArrowRight" ? 1 : -1;
+    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
+  });
+}
 
 function initMemorySlider() {
   const root = document.querySelector("[data-memory-slider]");
@@ -630,3 +776,108 @@ function initMemorySlider() {
   });
 }
 
+initMeetScrub();
+
+function initMeetScrub() {
+  const track = document.querySelector(".meet-track");
+  const pin = document.getElementById("meet-pin");
+  const phone = pin && pin.querySelector(".meet-phone");
+  const shots = pin ? [...pin.querySelectorAll(".meet-shot")] : [];
+  const caps = pin ? [...pin.querySelectorAll(".meet-cap")] : [];
+  const stage = document.querySelector(".stage");
+  const app = document.getElementById("app");
+  if (!track || !pin || !phone || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
+
+  const sizes = [
+    { w: 226.29, h: 461.46 },
+    { w: 226.29, h: 461.46 },
+    { w: 329.3, h: 486.26 },
+    { w: 329.3, h: 486.26 },
+  ];
+  const blockDesign = 603;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let frame = 0;
+
+  function zoomOf() {
+    const n = parseFloat(getComputedStyle(stage).zoom);
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+
+  function fade(nodes, progress) {
+    const segments = 3;
+    const x = Math.min(segments, Math.max(0, progress * segments));
+    const i = Math.min(segments - 1, Math.floor(x));
+    const t = progress >= 1 ? 1 : x - i;
+    const a = i;
+    const b = Math.min(3, i + 1);
+    nodes.forEach((img, idx) => {
+      let o = 0;
+      if (idx === a) o = 1 - t;
+      if (idx === b) o = idx === a ? 1 : t;
+      img.style.opacity = o.toFixed(3);
+    });
+    return { a, b, t };
+  }
+
+  function tick() {
+    frame = 0;
+    if (app.hidden) {
+      pin.classList.remove("is-on");
+      return;
+    }
+    const zoom = zoomOf();
+    const rect = track.getBoundingClientRect();
+    const blockV = blockDesign * zoom;
+    const cta = document.querySelector(".buy-cta-pos");
+    const ctaTop = cta ? cta.getBoundingClientRect().top : window.innerHeight;
+    const gap = 12 * zoom;
+    const space = Math.max(0, ctaTop - gap);
+    let pinTop = (space - blockV) / 2;
+    if (pinTop < 8 * zoom) pinTop = Math.max(0, space - blockV);
+
+    let top = rect.top;
+    let progress = 0;
+    const canPin = !reduce.matches && rect.height > blockV + 1;
+    if (canPin) {
+      if (rect.top > pinTop) {
+        top = rect.top;
+        progress = 0;
+      } else if (rect.bottom - blockV < pinTop) {
+        top = rect.bottom - blockV;
+        progress = 1;
+      } else {
+        top = pinTop;
+        const total = rect.height - blockV;
+        progress = total > 0 ? (pinTop - rect.top) / total : 0;
+      }
+    }
+
+    pin.style.left = rect.left + "px";
+    pin.style.top = top + "px";
+    pin.style.transform = "scale(" + zoom + ")";
+    pin.classList.add("is-on");
+
+    const shown = reduce.matches ? 0 : progress;
+    const step = fade(shots, shown);
+    fade(caps, shown);
+    const w = sizes[step.a].w + (sizes[step.b].w - sizes[step.a].w) * step.t;
+    const h = sizes[step.a].h + (sizes[step.b].h - sizes[step.a].h) * step.t;
+    phone.style.width = w.toFixed(2) + "px";
+    phone.style.height = h.toFixed(2) + "px";
+  }
+
+  function requestTick() {
+    if (frame) return;
+    frame = requestAnimationFrame(tick);
+  }
+
+  window.addEventListener("scroll", requestTick, { passive: true });
+  window.addEventListener("resize", requestTick, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("scroll", requestTick, { passive: true });
+    window.visualViewport.addEventListener("resize", requestTick, { passive: true });
+  }
+  reduce.addEventListener("change", requestTick);
+  new MutationObserver(requestTick).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  requestTick();
+}
