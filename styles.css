@@ -494,3 +494,55 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .lab-wheel {
   transform-origin: center center;
 }
+.ctx-carousel {
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ctx-carousel.is-dragging { cursor: grabbing; }
+.ctx-track {
+  display: flex;
+  height: 100%;
+  will-change: transform;
+}
+.ctx-slide {
+  position: relative;
+  flex: 0 0 292.364px;
+  width: 292.364px;
+  height: 480px;
+}
+.ctx-carousel img {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+.ctx-pager { z-index: 3; }
+.ctx-pip {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #fff;
+  overflow: hidden;
+  position: relative;
+  border-radius: 12px;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  cursor: pointer;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1), height 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ctx-pip.is-on { width: 32px; height: 12px; }
+.ctx-pip:focus { outline: none; }
+.ctx-pip:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctx-track,
+  .ctx-pip { transition: none !important; }
+}
