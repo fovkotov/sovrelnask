@@ -162,7 +162,7 @@ a { color: inherit; }
   white-space: normal;
   font-feature-settings: normal;
 }
-.feature-cards { top: calc(var(--hero-h) + 172px); }
+.feature-cards { top: calc(var(--hero-h) + 280px); }
 .buy-cta {
   position: fixed;
   z-index: 40;
