@@ -849,20 +849,20 @@ function initMeetScrub() {
     return Number.isFinite(n) && n > 0 ? n : 1;
   }
 
-  function fade(nodes, progress) {
+  function segmentAt(progress) {
     const segments = 3;
     const x = Math.min(segments, Math.max(0, progress * segments));
     const i = Math.min(segments - 1, Math.floor(x));
     const t = progress >= 1 ? 1 : x - i;
-    const a = i;
-    const b = Math.min(3, i + 1);
+    return { a: i, b: Math.min(3, i + 1), t };
+  }
+
+  function hold(nodes, step, progress) {
+    const index = progress >= 1 ? step.b : step.a;
     nodes.forEach((img, idx) => {
-      let o = 0;
-      if (idx === a) o = 1 - t;
-      if (idx === b) o = idx === a ? 1 : t;
-      img.style.opacity = o.toFixed(3);
+      if (idx !== index) img.style.opacity = "0";
     });
-    return { a, b, t };
+    if (nodes[index]) nodes[index].style.opacity = "1";
   }
 
   function tick() {
@@ -904,8 +904,9 @@ function initMeetScrub() {
     pin.classList.add("is-on");
 
     const shown = reduce.matches ? 0 : progress;
-    const step = fade(shots, shown);
-    fade(caps, shown);
+    const step = segmentAt(shown);
+    hold(shots, step, shown);
+    hold(caps, step, shown);
     const w = sizes[step.a].w + (sizes[step.b].w - sizes[step.a].w) * step.t;
     const h = sizes[step.a].h + (sizes[step.b].h - sizes[step.a].h) * step.t;
     phone.style.width = w.toFixed(2) + "px";
