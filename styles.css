@@ -155,18 +155,54 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
 .meet-caps {
   position: relative;
   flex: none;
-  width: 327px;
+  width: 333px;
   height: 96px;
-  margin-top: 16px;
+  margin-top: 32px;
 }
 .meet-cap {
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: auto;
-  max-width: 327px;
-  height: auto;
-  transform: translate(-50%, -50%);
+  top: 0;
+  width: 300px;
+  margin: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 15px;
+  line-height: 22px;
+  letter-spacing: 0;
+  color: rgba(48, 43, 49, 0.48);
+  overflow-wrap: break-word;
+  transition: none;
+}
+.meet-cap:first-child {
+  width: 333px;
+}
+.meet-cap-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.meet-cap-title,
+.meet-cap-body {
+  margin: 0;
+  text-align: center;
+  font-weight: 400;
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+}
+.meet-cap-title {
+  font-size: 17px;
+  line-height: 24px;
+  color: rgba(48, 43, 49, 0.9);
+}
+.meet-cap-body {
+  font-size: 15px;
+  line-height: 22px;
+  color: rgba(48, 43, 49, 0.48);
 }
 .hero-photo {
   position: absolute;
