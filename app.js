@@ -302,3 +302,75 @@ function initContextCarousel() {
 }
 
 initContextCarousel();
+initItogiDrag();
+
+function initItogiDrag() {
+  const viewport = document.querySelector(".itogi-screen");
+  const ui = document.getElementById("itogi-ui");
+  const track = document.querySelector(".itogi-track");
+  const thumb = document.getElementById("itogi-thumb");
+  if (!viewport || !ui || !track || !thumb) return;
+
+  const designW = 375;
+  let scroll = 0;
+  let maxScroll = 0;
+
+  function layout() {
+    const scale = viewport.clientWidth / designW;
+    const visualH = ui.offsetHeight * scale;
+    maxScroll = Math.max(0, visualH - viewport.clientHeight);
+    scroll = Math.min(Math.max(0, scroll), maxScroll);
+    ui.style.transform = `translateY(${-scroll}px) scale(${scale})`;
+    const travel = Math.max(0, track.clientHeight - thumb.offsetHeight);
+    const y = maxScroll === 0 ? 0 : (scroll / maxScroll) * travel;
+    thumb.style.translate = `0 ${y}px`;
+    thumb.setAttribute("aria-valuenow", String(maxScroll === 0 ? 0 : Math.round((scroll / maxScroll) * 100)));
+  }
+
+  let drag = null;
+
+  thumb.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    thumb.setPointerCapture(event.pointerId);
+    const zoom = track.offsetHeight ? track.getBoundingClientRect().height / track.offsetHeight : 1;
+    const travel = Math.max(0, track.clientHeight - thumb.offsetHeight);
+    const origin = maxScroll === 0 ? 0 : (scroll / maxScroll) * travel;
+    drag = { id: event.pointerId, y: event.clientY, origin, zoom };
+  });
+
+  thumb.addEventListener("pointermove", (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    event.preventDefault();
+    const travel = Math.max(0, track.clientHeight - thumb.offsetHeight);
+    const dy = (event.clientY - drag.y) / (drag.zoom || 1);
+    const next = Math.min(travel, Math.max(0, drag.origin + dy));
+    scroll = travel === 0 ? 0 : (next / travel) * maxScroll;
+    layout();
+  });
+
+  function endDrag(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    drag = null;
+  }
+
+  thumb.addEventListener("pointerup", endDrag);
+  thumb.addEventListener("pointercancel", endDrag);
+
+  thumb.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Home" && event.key !== "End") return;
+    event.preventDefault();
+    const step = maxScroll * 0.08;
+    if (event.key === "ArrowDown") scroll += step;
+    else if (event.key === "ArrowUp") scroll -= step;
+    else if (event.key === "Home") scroll = 0;
+    else scroll = maxScroll;
+    layout();
+  });
+
+  ui.querySelectorAll("img").forEach((img) => {
+    if (!img.complete) img.addEventListener("load", layout, { once: true });
+  });
+  window.addEventListener("resize", layout);
+  layout();
+}
