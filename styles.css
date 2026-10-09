@@ -52,14 +52,8 @@ a { color: inherit; }
 .layer { position: relative; z-index: 2; }
 .layer a { pointer-events: auto; text-decoration: none; }
 :root {
-  --hero-h: calc(100vh - 258px);
-  --hero-video-h: calc(100vh - 140px);
-}
-@media (max-width: 768px) {
-  :root {
-    --hero-h: calc((100vh - 258px) / (100vw / 375px));
-    --hero-video-h: calc((100vh - 140px) / (100vw / 375px));
-  }
+  --hero-h: 464px;
+  --hero-video-h: 578.377px;
 }
 .hero-photo {
   position: absolute;
@@ -73,14 +67,17 @@ a { color: inherit; }
   mask-image: url("./assets/fig/hero-mask.png");
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  -webkit-mask-position: center top;
+  mask-position: center top;
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
   -webkit-mask-mode: alpha;
   mask-mode: alpha;
 }
 .hero-photo video {
+  position: absolute;
+  left: 0;
+  top: -0.5px;
   display: block;
   width: 100%;
   height: var(--hero-video-h);
@@ -151,7 +148,7 @@ a { color: inherit; }
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
-.hero-title { top: calc(var(--hero-h) - 88px); }
+.hero-title { top: calc(var(--hero-h) + 40px); }
 .hero-title .hero-lead {
   margin: 12px 0 0;
   width: 237px;
@@ -165,7 +162,7 @@ a { color: inherit; }
   white-space: normal;
   font-feature-settings: normal;
 }
-.feature-cards { top: calc(var(--hero-h) + 44px); }
+.feature-cards { top: calc(var(--hero-h) + 172px); }
 .buy-cta {
   position: fixed;
   z-index: 40;
