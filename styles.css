@@ -87,6 +87,70 @@ a { color: inherit; }
   object-fit: cover;
   object-position: center;
 }
+.hero-lockup {
+  position: absolute;
+  left: 16px;
+  top: 60px;
+  width: 148px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: none;
+  color: #fff;
+}
+.hero-lockup-marks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.hero-lockup-marks img,
+.hero-lockup-alice {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.hero-lockup-alice {
+  position: relative;
+}
+.hero-lockup-alice > span {
+  position: absolute;
+  top: 1.56%;
+  bottom: 1.56%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-lockup-flip {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+.hero-lockup-alice img {
+  width: 100%;
+  height: 100%;
+}
+.hero-lockup p {
+  margin: 0;
+  font-family: "YS Compressed", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 46px;
+  line-height: normal;
+  letter-spacing: -0.46px;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+  font-feature-settings: "ss01" 1;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
 .hero-title { top: calc(var(--hero-h) - 88px); }
 .hero-title .hero-lead {
   margin: 12px 0 0;
