@@ -381,6 +381,10 @@ function initItogiDrag() {
   let drag = null;
 
   function blockScroll(event) {
+    const node = event.target;
+    if (!(node instanceof Element)) return;
+    if (node.closest(".itogi-thumb")) return;
+    if (node !== phone && node !== viewport && !phone.contains(node)) return;
     event.preventDefault();
   }
 
@@ -409,19 +413,10 @@ function initItogiDrag() {
     });
   }
 
-  [phone, viewport, track].forEach((el) => {
-    el.addEventListener("wheel", blockScroll, { passive: false, capture: true });
-    el.addEventListener("touchmove", blockScroll, { passive: false, capture: true });
+  [phone, viewport].forEach((el) => {
+    el.addEventListener("wheel", blockScroll, { passive: false });
+    el.addEventListener("touchmove", blockScroll, { passive: false });
   });
-  phone.addEventListener("touchstart", (event) => {
-    if (inPhone(event)) event.preventDefault();
-  }, { passive: false, capture: true });
-  phone.addEventListener("pointerdown", (event) => {
-    if (inPhone(event)) event.preventDefault();
-  }, { capture: true });
-  phone.addEventListener("pointermove", (event) => {
-    if (event.buttons && inPhone(event)) event.preventDefault();
-  }, { capture: true });
   phone.addEventListener("dragstart", (event) => {
     if (inPhone(event)) event.preventDefault();
   }, { capture: true });
