@@ -523,7 +523,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .signup-submit,
 .signup-remind-btn,
 .signup-close,
-.signup-consent,
 .signup-legal-link {
   transform-origin: center center;
   transition: transform 0.3s cubic-bezier(0.5, 0, 0.25, 1);
@@ -534,7 +533,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .signup-submit:hover,
 .signup-remind-btn:hover,
 .signup-close:hover,
-.signup-consent:hover,
 .signup-legal-link:hover {
   transform: scale(0.98);
 }
@@ -544,7 +542,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .signup-submit:active,
 .signup-remind-btn:active,
 .signup-close:active,
-.signup-consent:active,
 .signup-legal-link:active {
   transform: scale(0.92);
   transition-duration: 0.1s;
