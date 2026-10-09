@@ -129,6 +129,52 @@ function initLabWheel() {
   apply();
 }
 
+function initFooterWheel() {
+  const wheel = document.querySelector(".footer-wheel");
+  if (!wheel) return;
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const start = -60;
+  let frame = 0;
+
+  function apply() {
+    frame = 0;
+    if (reduce.matches) {
+      wheel.style.transform = "rotate(0deg)";
+      return;
+    }
+    const scroller = document.scrollingElement || document.documentElement;
+    const scrollY = window.scrollY || scroller.scrollTop || 0;
+    const view = window.innerHeight;
+    const scrollHeight = scroller.scrollHeight;
+    const max = scrollHeight - view;
+    if (max <= 4 || scrollY + view >= scrollHeight - 4) {
+      wheel.style.transform = "rotate(0deg)";
+      return;
+    }
+    const block = wheel.parentElement || wheel;
+    const begin = scrollY + block.getBoundingClientRect().top - view;
+    const span = max - begin;
+    const progress = span > 1 ? Math.min(1, Math.max(0, (scrollY - begin) / span)) : 0;
+    const angle = (1 - progress) * start;
+    wheel.style.transform = "rotate(" + angle.toFixed(3) + "deg)";
+  }
+
+  function requestTick() {
+    if (frame) return;
+    frame = requestAnimationFrame(apply);
+  }
+
+  window.addEventListener("scroll", requestTick, { passive: true });
+  window.addEventListener("resize", requestTick, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("scroll", requestTick, { passive: true });
+    window.visualViewport.addEventListener("resize", requestTick, { passive: true });
+  }
+  reduce.addEventListener("change", requestTick);
+  apply();
+}
+
 function initContextCarousel() {
   const root = document.querySelector("[data-ctx-carousel]");
   if (!root) return;
