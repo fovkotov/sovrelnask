@@ -174,12 +174,14 @@ a { color: inherit; }
   font-feature-settings: normal;
 }
 .feature-cards { top: calc(var(--hero-h) + 32px + 64px + 12px + 44px + 120px); }
-.buy-cta {
+.buy-cta-pos {
   position: fixed;
   z-index: 40;
   left: 50%;
   bottom: 8px;
   transform: translateX(calc(-50% + 0.5px));
+}
+.buy-cta {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -198,7 +200,7 @@ a { color: inherit; }
 body:has(#app[hidden]) .buy-cta { display: none !important; }
 body:has(#app[hidden]) .signup { display: none !important; }
 @media (max-width: 768px) {
-  .buy-cta {
+  .buy-cta-pos {
     bottom: calc(8px * (100vw / 375px));
     transform: translateX(calc(-50% + 0.5px)) scale(calc(100vw / 375px));
     transform-origin: center bottom;
@@ -394,26 +396,17 @@ body:has(#app[hidden]) .signup { display: none !important; }
 }
 .signup-corner {
   position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 147px;
+  height: 53px;
   display: block;
   pointer-events: none;
-  transform: scaleY(-1);
 }
 .signup-corner img {
   display: block;
-  width: 100%;
-  height: 100%;
-}
-.signup-corner-a {
-  top: -1px;
-  right: -2px;
-  width: 148px;
-  height: 51.439px;
-}
-.signup-corner-b {
-  top: -1px;
-  right: -1px;
   width: 147px;
-  height: 52.093px;
+  height: 53px;
 }
 .signup-legal {
   margin: 0;
@@ -425,6 +418,7 @@ body:has(#app[hidden]) .signup { display: none !important; }
   color: rgba(255, 255, 255, 0.24);
 }
 .signup-legal-link {
+  display: inline-block;
   text-decoration: underline;
   text-decoration-thickness: from-font;
   text-underline-position: from-font;
@@ -454,4 +448,36 @@ body:has(#app[hidden]) .signup { display: none !important; }
     height: calc(100dvh / (100vw / 375px));
     zoom: calc(100vw / 375px);
   }
+}
+.tap,
+.buy-cta,
+.gate-submit,
+.signup-submit,
+.signup-remind-btn,
+.signup-close,
+.signup-consent,
+.signup-legal-link {
+  transform-origin: center center;
+  transition: transform 0.3s cubic-bezier(0.5, 0, 0.25, 1);
+}
+.tap:hover,
+.buy-cta:hover,
+.gate-submit:hover,
+.signup-submit:hover,
+.signup-remind-btn:hover,
+.signup-close:hover,
+.signup-consent:hover,
+.signup-legal-link:hover {
+  transform: scale(0.98);
+}
+.tap:active,
+.buy-cta:active,
+.gate-submit:active,
+.signup-submit:active,
+.signup-remind-btn:active,
+.signup-close:active,
+.signup-consent:active,
+.signup-legal-link:active {
+  transform: scale(0.92);
+  transition-duration: 0.1s;
 }
