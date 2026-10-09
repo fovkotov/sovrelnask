@@ -988,3 +988,46 @@ body:has(#app[hidden]) .signup { display: none !important; }
 .device-view-left img,
 .device-view-right img { object-position: bottom; }
 .device-view-center img { object-fit: contain; }
+
+/* Security cards: free horizontal scroll. The port is the 375 column so .art does not clip the first card; track padding keeps that card on the 24px inset. No snap. */
+.security-slider {
+  position: relative;
+  flex: 0 0 auto;
+  width: 375px;
+  min-width: 0;
+  max-width: 375px;
+  margin-left: -24px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.security-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.security-slider.is-dragging { cursor: grabbing; }
+.security-slider:focus { outline: none; }
+.security-slider:focus-visible {
+  outline: 2px solid rgba(48, 43, 49, 0.35);
+  outline-offset: 2px;
+}
+.security-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: max-content;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.security-card {
+  flex: 0 0 320px;
+  width: 320px;
+}
+.security-slider img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
