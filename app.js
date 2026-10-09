@@ -90,7 +90,7 @@ function initLabWheel() {
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   const parts = wheels.map((el) => ({ el, base: el.style.transform.trim() }));
-  const turn = 90;
+  const turn = 30;
   let frame = 0;
 
   function apply() {
