@@ -42,7 +42,7 @@ a { color: inherit; }
 .art {
   position: relative;
   width: 375px;
-  height: 19821px;
+  height: calc(19821px + var(--flow-shift));
   overflow: hidden;
   background: #dbdfe7;
 }
@@ -51,9 +51,20 @@ a { color: inherit; }
 .art p { margin: 0; }
 .layer { position: relative; z-index: 2; }
 .layer a { pointer-events: auto; text-decoration: none; }
+/* first screen: mask, 32, title 64, 12, caption 44, 32, CTA 53, 8 = viewport */
 :root {
-  --hero-h: 464px;
-  --hero-video-h: 578.377px;
+  --screen-h: 100svh;
+  --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px + 8px)));
+  --hero-video-h: calc(var(--hero-h) * 578.377 / 464);
+  --flow-shift: calc(var(--hero-h) - 472px);
+}
+@media (max-width: 768px) {
+  :root { --screen-h: calc(100svh / (100vw / 375px)); }
+}
+.art > [data-section],
+.layer > .feature-cards ~ :not([style*="display:contents"]),
+.layer > .feature-cards ~ [style*="display:contents"] > * {
+  translate: 0 var(--flow-shift);
 }
 .hero-photo {
   position: absolute;
@@ -148,7 +159,7 @@ a { color: inherit; }
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }
-.hero-title { top: calc(var(--hero-h) + 40px); }
+.hero-title { top: calc(var(--hero-h) + 32px); }
 .hero-title .hero-lead {
   margin: 12px 0 0;
   width: 237px;
@@ -162,7 +173,7 @@ a { color: inherit; }
   white-space: normal;
   font-feature-settings: normal;
 }
-.feature-cards { top: calc(var(--hero-h) + 280px); }
+.feature-cards { top: calc(var(--hero-h) + 32px + 64px + 12px + 44px + 120px); }
 .buy-cta {
   position: fixed;
   z-index: 40;
@@ -188,7 +199,7 @@ body:has(#app[hidden]) .buy-cta { display: none !important; }
 body:has(#app[hidden]) .signup { display: none !important; }
 @media (max-width: 768px) {
   .buy-cta {
-    bottom: 8px;
+    bottom: calc(8px * (100vw / 375px));
     transform: translateX(calc(-50% + 0.5px)) scale(calc(100vw / 375px));
     transform-origin: center bottom;
   }
