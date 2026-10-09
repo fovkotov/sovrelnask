@@ -481,3 +481,13 @@ body:has(#app[hidden]) .signup { display: none !important; }
   transform: scale(0.92);
   transition-duration: 0.1s;
 }
+/* Safari only: CTA flush to the viewport; hero mask grows by that same 8px */
+@supports (hanging-punctuation: first) and (font: -apple-system-body) and (-webkit-appearance: none) {
+  :root {
+    --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px)));
+  }
+  .buy-cta-pos,
+  .buy-cta {
+    bottom: 0;
+  }
+}
