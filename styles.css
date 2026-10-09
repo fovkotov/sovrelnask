@@ -621,3 +621,43 @@ body:has(#app[hidden]) .signup { display: none !important; }
   pointer-events: none;
   transform: translateY(-1px);
 }
+
+/* Plans filmstrip: the scrollport is the art width, so .art overflow does not cut the first card. Track padding keeps that card at the 24px inset. */
+.plans-slider {
+  position: absolute;
+  left: -24px;
+  top: 0;
+  width: 375px;
+  height: 334px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.plans-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.plans-slider.is-dragging { cursor: grabbing; }
+.plans-slider:focus { outline: none; }
+.plans-slider:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+.plans-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  width: max-content;
+  min-height: 334px;
+  padding-left: 24px;
+  padding-right: 8px;
+}
+.plans-slider img {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
