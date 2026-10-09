@@ -744,8 +744,6 @@ function initDeviceSlider() {
 function initMemorySlider() {
   const root = document.querySelector("[data-memory-slider]");
   if (!root) return;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const step = 324;
   let pointerId = null;
   let startX = 0;
   let startY = 0;
@@ -756,7 +754,6 @@ function initMemorySlider() {
   let lastT = 0;
   let velocity = 0;
   let frame = 0;
-  let wheelTimer = 0;
 
   function zoom() {
     const width = root.getBoundingClientRect().width;
@@ -771,15 +768,9 @@ function initMemorySlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
-  function snap() {
-    const target = clamp(Math.round(root.scrollLeft / step) * step);
-    root.scrollTo({ left: target, behavior: reduce.matches ? "auto" : "smooth" });
-  }
-
   root.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     cancelAnimationFrame(frame);
-    clearTimeout(wheelTimer);
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
@@ -825,22 +816,17 @@ function initMemorySlider() {
     dragging = false;
     axis = null;
     root.classList.remove("is-dragging");
-    if (!moved) return;
-    if (reduce.matches || Math.abs(velocity) < 0.05) {
-      snap();
-      return;
-    }
+    if (!moved || Math.abs(velocity) < 0.05) return;
     let v = Math.max(-28, Math.min(28, -velocity * 16));
     let current = root.scrollLeft;
-    const glide = () => {
+    const step = () => {
       v *= 0.92;
       current = clamp(current + v);
       root.scrollLeft = current;
       const hit = current <= 0 || current >= limit();
-      if (Math.abs(v) > 0.6 && !hit) frame = requestAnimationFrame(glide);
-      else snap();
+      if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
     };
-    frame = requestAnimationFrame(glide);
+    frame = requestAnimationFrame(step);
   }
 
   root.addEventListener("pointerup", end);
@@ -858,21 +844,17 @@ function initMemorySlider() {
     if (event.deltaMode === 1) delta *= 16;
     else if (event.deltaMode === 2) delta *= root.clientWidth;
     cancelAnimationFrame(frame);
-    root.classList.add("is-dragging");
-    root.scrollLeft = clamp(root.scrollLeft + delta / zoom());
+    const next = clamp(root.scrollLeft + delta / zoom());
+    if (next === root.scrollLeft) return;
+    root.scrollLeft = next;
     event.preventDefault();
-    clearTimeout(wheelTimer);
-    wheelTimer = setTimeout(() => {
-      root.classList.remove("is-dragging");
-      snap();
-    }, 90);
   }, { passive: false });
 
   root.addEventListener("keydown", (event) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    root.scrollTo({ left: clamp(root.scrollLeft + dir * step), behavior: reduce.matches ? "auto" : "smooth" });
+    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
   });
 }
 

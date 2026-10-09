@@ -786,7 +786,7 @@ body:has(#app[hidden]) .signup { display: none !important; }
   pointer-events: none;
 }
 
-/* Oval memory cards: the scrollport is the 375 column, first card inset 24px so .art does not clip its left edge. */
+/* Oval memory cards: free horizontal scroll. The scrollport is the 375 column, first card inset 24px so .art does not clip its left edge. No snap. */
 .memory-slider {
   position: absolute;
   left: 0;
@@ -795,8 +795,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
   height: 570px;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-padding-left: 24px;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -807,10 +805,7 @@ body:has(#app[hidden]) .signup { display: none !important; }
   -webkit-user-select: none;
 }
 .memory-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
-.memory-slider.is-dragging {
-  cursor: grabbing;
-  scroll-snap-type: none;
-}
+.memory-slider.is-dragging { cursor: grabbing; }
 .memory-slider:focus { outline: none; }
 .memory-slider:focus-visible {
   outline: 2px solid rgba(48, 43, 49, 0.35);
@@ -830,7 +825,6 @@ body:has(#app[hidden]) .signup { display: none !important; }
   display: flex;
   flex-direction: column;
   gap: 20px;
-  scroll-snap-align: start;
 }
 .memory-photo {
   position: relative;
