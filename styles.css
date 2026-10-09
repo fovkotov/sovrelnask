@@ -1003,10 +1003,38 @@ body:has(#app[hidden]) .signup { display: none !important; }
   line-height: 30px;
 }
 
-/* Device angles: one free horizontal track. Positions keep the old overlap; --device-rest frames the center view. No snap. */
-.device-slider {
-  --device-rest: 205.9675;
+/* Design block (Figma 5515:245631): dark frame, hero cluster, then a free horizontal angle row. No snap. */
+.design-block {
+  background: #1e1e1e;
+}
+.design-copy {
   position: relative;
+  z-index: 3;
+}
+.design-cluster {
+  position: absolute;
+  left: -214.072265625px;
+  top: -0.63671875px;
+  width: 839.7822875976562px;
+  height: 839.7822875976562px;
+  z-index: 1;
+  pointer-events: none;
+}
+.design-cluster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  pointer-events: none;
+}
+.device-slider {
+  --device-rest: 205.96875;
+  position: absolute;
+  left: 0.015625px;
+  top: 749px;
+  z-index: 2;
   flex-shrink: 0;
   width: 375px;
   height: 400px;
@@ -1030,27 +1058,27 @@ body:has(#app[hidden]) .signup { display: none !important; }
 }
 .device-track {
   position: relative;
-  width: 779.9975px;
+  width: 780px;
   height: 400px;
 }
 .device-view {
   position: absolute;
-  top: 0.13px;
+  top: 0.1328125px;
 }
 .device-view-left {
   left: 0;
   z-index: 3;
-  width: 300.075px;
-  height: 400.1px;
+  width: 300.07501220703125px;
+  height: 400.1000061035156px;
 }
 .device-view-center {
-  left: 264.762px;
+  left: 250px;
   z-index: 1;
-  width: 270.091px;
-  height: 399.495px;
+  width: 299.6211853027344px;
+  height: 399.4949035644531px;
 }
 .device-view-right {
-  left: 464.9975px;
+  left: 465px;
   z-index: 2;
   width: 315px;
   height: 400px;
@@ -1070,7 +1098,7 @@ body:has(#app[hidden]) .signup { display: none !important; }
 }
 .device-view-left img,
 .device-view-right img { object-position: bottom; }
-.device-view-center img { object-fit: contain; }
+.device-view-center img { object-fit: cover; }
 
 /* Security cards: free horizontal scroll. The port is the 375 column so .art does not clip the first card; track padding keeps that card on the 24px inset. No snap. */
 .security-slider {
