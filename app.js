@@ -57,7 +57,8 @@ function initSignup() {
   function closeSignup() {
     if (root.hidden) return;
     root.hidden = true;
-    document.body.style.overflow = "";
+    const terms = document.getElementById("terms");
+    if (!terms || terms.hidden) document.body.style.overflow = "";
     openBtn.focus();
   }
 
@@ -70,7 +71,9 @@ function initSignup() {
   root.querySelector(".signup-close").addEventListener("click", closeSignup);
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeSignup();
+    if (event.key !== "Escape" || root.hidden) return;
+    closeSignup();
+    event.stopImmediatePropagation();
   });
 
   form.addEventListener("submit", (event) => {
@@ -78,8 +81,78 @@ function initSignup() {
   });
 }
 
+function initTerms() {
+  const openBtn = document.getElementById("plans-terms");
+  const root = document.getElementById("terms");
+  const sheet = root && root.querySelector(".terms-sheet");
+  if (!openBtn || !root || !sheet) return;
+
+  const tabs = [...sheet.querySelectorAll(".terms-tab")];
+  const panels = [...sheet.querySelectorAll(".terms-panel")];
+  const scroller = sheet.querySelector(".terms-panels");
+
+  function syncScroll() {
+    const signup = document.getElementById("signup");
+    const open = !root.hidden || (signup && !signup.hidden);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  function openTerms() {
+    root.hidden = false;
+    syncScroll();
+    const current = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+    (current || tabs[0]).focus();
+  }
+
+  function closeTerms() {
+    if (root.hidden) return;
+    root.hidden = true;
+    syncScroll();
+    openBtn.focus();
+  }
+
+  function selectTab(name) {
+    sheet.dataset.tab = name;
+    for (const tab of tabs) {
+      const on = tab.dataset.tab === name;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    }
+    for (const panel of panels) panel.hidden = panel.dataset.panel !== name;
+    if (scroller) scroller.scrollTop = 0;
+  }
+
+  openBtn.addEventListener("click", openTerms);
+  openBtn.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openTerms();
+  });
+
+  sheet.querySelector(".terms-close").addEventListener("click", closeTerms);
+  sheet.querySelector(".terms-notify").addEventListener("click", () => {
+    const buy = document.querySelector(".buy-cta");
+    if (buy) buy.click();
+  });
+
+  for (const tab of tabs) {
+    tab.addEventListener("click", () => {
+      selectTab(tab.dataset.tab);
+      tab.focus();
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || root.hidden) return;
+    const signup = document.getElementById("signup");
+    if (signup && !signup.hidden) return;
+    closeTerms();
+  });
+}
+
 initGate();
 initSignup();
+initTerms();
 initLabWheel();
 initFooterWheel();
 
