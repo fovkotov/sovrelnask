@@ -158,6 +158,10 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   object-fit: cover;
   object-position: center;
 }
+/* meet-screen-4.png bakes a keyboard from y=1258 of 1960. Clip it so Keyboard.png is the only one. */
+.meet-shot-4 {
+  clip-path: inset(0 0 35.8163% 0);
+}
 .meet-dim {
   position: absolute;
   inset: 0;
@@ -165,12 +169,26 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   opacity: 0;
   pointer-events: none;
 }
+.meet-keyboard {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 4;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 679 / 528;
+  max-width: none;
+  background: #d3d7dc;
+  pointer-events: none;
+  transform: translate3d(0, calc(100% + 2px), 0);
+}
 .meet-ask {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 3;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;

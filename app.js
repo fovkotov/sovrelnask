@@ -948,9 +948,10 @@ function initMeetScrub() {
   const dim = pin && pin.querySelector(".meet-dim");
   const jewel = pin && pin.querySelector(".meet-pin-jewel");
   const ask = pin && pin.querySelector(".meet-ask");
+  const keyboard = pin && pin.querySelector(".meet-keyboard");
   const stage = document.querySelector(".stage");
   const app = document.getElementById("app");
-  if (!track || !pin || !phone || !dim || !jewel || !ask || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
+  if (!track || !pin || !phone || !dim || !jewel || !ask || !keyboard || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
 
   const baseW = 226.29;
   const largeW = 329.3;
@@ -973,6 +974,21 @@ function initMeetScrub() {
     if (dist < 1000) return { a: 1, b: 1, t: 0 };
     if (dist < 1600) return { a: 1, b: 2, t: (dist - 1000) / 600 };
     return { a: 2, b: 3, t: (dist - 1600) / 600 };
+  }
+
+  function keyboardHeight() {
+    const h = keyboard.offsetHeight;
+    if (h > 0) return h;
+    const w = keyboard.offsetWidth || phone.clientWidth * 0.89151874;
+    return w * (528 / 679);
+  }
+
+  function keyboardT(step, shown) {
+    const index = shown >= 1 ? step.b : step.a;
+    if (reduce.matches) return index === 3 ? 1 : 0;
+    if (shown >= 1) return 1;
+    if (step.a === 2 && step.b === 3) return step.t;
+    return 0;
   }
 
   function hold(nodes, step, progress) {
@@ -1047,6 +1063,10 @@ function initMeetScrub() {
     paintShots(step, shown);
     hold(caps, step, shown);
     const askShot = shown >= 1 ? step.b : step.a;
+    const k = keyboardT(step, shown);
+    const kbH = keyboardHeight();
+    keyboard.style.transform = "translate3d(0," + ((1 - k) * (kbH + 2)).toFixed(2) + "px,0)";
+    ask.style.transform = "translate3d(0," + ((-k) * kbH).toFixed(2) + "px,0)";
     ask.style.opacity = askShot === 1 || askShot === 2 ? "1" : "0";
     const scale = scales[step.a] + (scales[step.b] - scales[step.a]) * step.t;
     phone.style.transform = "scale(" + scale + ")";
@@ -1216,7 +1236,7 @@ function initTalkTitle() {
     const overlapsX = rect.right > viewLeft && rect.left < viewLeft + viewW;
     if (!overlapsX) return false;
     const center = (rect.top + rect.bottom) / 2;
-    const mid = viewTop + viewH / 2;
+    const mid = viewTop + viewH * 0.75;
     return center <= mid;
   }
 
