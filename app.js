@@ -181,86 +181,222 @@ function initContextCarousel() {
   const track = root.querySelector(".ctx-track");
   const pager = root.parentElement.querySelector(".ctx-pager");
   const pips = pager ? [...pager.querySelectorAll(".ctx-pip")] : [];
-  const count = track.children.length;
+  const cards = [...track.children];
+  const count = cards.length;
+  if (!count) return;
   const slideW = 292.364;
+  const threshold = slideW * 0.35;
+  const autoplayMs = 5000;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const bars = pips.map((pip) => {
+    const bar = document.createElement("span");
+    bar.className = "ctx-pip-bar";
+    bar.setAttribute("aria-hidden", "true");
+    pip.appendChild(bar);
+    return bar;
+  });
+
   let index = 0;
   let pointerId = null;
   let startX = 0;
   let startY = 0;
-  let origin = 0;
-  let x = 0;
-  let lastX = 0;
-  let lastT = 0;
-  let velocity = 0;
   let axis = null;
   let dragging = false;
+  let animating = false;
+  let dragX = 0;
+  let springToken = 0;
+  let progress = 0;
+  let remaining = autoplayMs;
+  let playing = false;
+  let inView = false;
+  let pausedByDrag = false;
+  let playRaf = 0;
+  let lastTs = 0;
+  const posed = cards.map(() => ({ tx: 0, rot: 0, scale: 1 }));
 
   function zoom() {
     const width = root.getBoundingClientRect().width;
     return width > 0 ? width / slideW : 1;
   }
 
-  function clamp(i) {
-    return Math.max(0, Math.min(count - 1, i));
+  function pose(position, offset) {
+    const scale = position === 0 ? 1 : Math.max(0.82, 1 - position * 0.075);
+    const rotateAbs = position === 0 ? 0 : Math.max(0, 6 - (position - 1));
+    let rot = position === 0 ? 0 : (position % 2 === 1 ? -rotateAbs : rotateAbs);
+    const tx = position === 0 ? offset : 0;
+    if (offset !== 0) {
+      const normalized = Math.max(-1, Math.min(1, offset / (slideW / 2)));
+      const rotateFactor = Math.max(0, 1 - position * 0.3);
+      rot += normalized * 12 * rotateFactor;
+    }
+    return { tx, rot, scale, z: Math.max(1, 100 - position) };
   }
 
-  function rubber(px) {
-    const min = -(count - 1) * slideW;
-    if (px > 0) return px * 0.32;
-    if (px < min) return min + (px - min) * 0.32;
-    return px;
+  function place(position, offset) {
+    const cardIndex = (index + position) % count;
+    const next = pose(position, offset);
+    posed[cardIndex] = { tx: next.tx, rot: next.rot, scale: next.scale };
+    const card = cards[cardIndex];
+    card.style.zIndex = String(next.z);
+    card.style.transform = `translate3d(${next.tx.toFixed(3)}px,0,0) rotate(${next.rot.toFixed(3)}deg) scale(${next.scale.toFixed(4)})`;
   }
 
-  function render(px, animate) {
-    const motion = animate && !reduce.matches;
-    track.style.transition = motion ? "transform 0.52s cubic-bezier(0.22, 0.8, 0.28, 1)" : "none";
-    track.style.transform = `translate3d(${px}px,0,0)`;
+  function layout(offset) {
+    for (let position = 0; position < count; position += 1) place(position, offset);
   }
 
-  function paintPips(active) {
+  function stepSpring(value, velocity, target, dt) {
+    const accel = -420 * (value - target) - 20 * velocity;
+    const nextVelocity = velocity + accel * dt;
+    return [value + nextVelocity * dt, nextVelocity];
+  }
+
+  function springToRest() {
+    const token = ++springToken;
+    if (reduce.matches) {
+      animating = false;
+      layout(0);
+      return;
+    }
+    animating = true;
+    const velocity = cards.map(() => ({ tx: 0, rot: 0, scale: 0 }));
+    let prev = 0;
+    const frame = (now) => {
+      if (token !== springToken) return;
+      const dt = Math.min(0.032, prev ? (now - prev) / 1000 : 0.016);
+      prev = now;
+      let done = true;
+      for (let cardIndex = 0; cardIndex < count; cardIndex += 1) {
+        const position = (cardIndex - index + count) % count;
+        const target = pose(position, 0);
+        const state = posed[cardIndex];
+        const speed = velocity[cardIndex];
+        [state.tx, speed.tx] = stepSpring(state.tx, speed.tx, target.tx, dt);
+        [state.rot, speed.rot] = stepSpring(state.rot, speed.rot, target.rot, dt);
+        [state.scale, speed.scale] = stepSpring(state.scale, speed.scale, target.scale, dt);
+        const card = cards[cardIndex];
+        card.style.zIndex = String(target.z);
+        card.style.transform = `translate3d(${state.tx.toFixed(3)}px,0,0) rotate(${state.rot.toFixed(3)}deg) scale(${state.scale.toFixed(4)})`;
+        if (Math.abs(state.tx - target.tx) > 0.4 || Math.abs(speed.tx) > 8) done = false;
+        if (Math.abs(state.rot - target.rot) > 0.05 || Math.abs(speed.rot) > 2) done = false;
+        if (Math.abs(state.scale - target.scale) > 0.001 || Math.abs(speed.scale) > 0.02) done = false;
+      }
+      if (!done) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      animating = false;
+      layout(0);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  function paintPips() {
     pips.forEach((pip, n) => {
-      const on = n === active;
+      const on = n === index;
       pip.classList.toggle("is-on", on);
       pip.setAttribute("aria-selected", on ? "true" : "false");
     });
   }
 
-  function setIndex(i, animate) {
-    index = clamp(i);
-    x = -index * slideW;
-    render(x, animate);
-    paintPips(index);
+  function paintBars() {
+    bars.forEach((bar, n) => {
+      const scaleX = n < index ? 1 : n === index ? progress : 0;
+      bar.style.transform = `scaleX(${scaleX})`;
+    });
   }
 
-  function commit() {
-    const delta = x - origin;
-    let next = index;
-    if (velocity <= -0.45 || delta <= -slideW * 0.18) next = index + 1;
-    else if (velocity >= 0.45 || delta >= slideW * 0.18) next = index - 1;
-    setIndex(next, true);
+  function stopPlay() {
+    playing = false;
+    lastTs = 0;
+    if (playRaf) cancelAnimationFrame(playRaf);
+    playRaf = 0;
   }
+
+  function playFrame(now) {
+    if (!playing) return;
+    const dt = lastTs ? now - lastTs : 0;
+    lastTs = now;
+    remaining = Math.max(0, remaining - dt);
+    progress = 1 - remaining / autoplayMs;
+    paintBars();
+    if (remaining <= 0) {
+      index = (index + 1) % count;
+      remaining = autoplayMs;
+      progress = 0;
+      paintPips();
+      paintBars();
+      springToRest();
+    }
+    playRaf = requestAnimationFrame(playFrame);
+  }
+
+  function startPlay() {
+    if (playing || reduce.matches || !inView || pausedByDrag) return;
+    playing = true;
+    lastTs = 0;
+    playRaf = requestAnimationFrame(playFrame);
+  }
+
+  function restartAutoplay() {
+    remaining = autoplayMs;
+    progress = reduce.matches ? 1 : 0;
+    pausedByDrag = false;
+    paintBars();
+    stopPlay();
+    startPlay();
+  }
+
+  function enterView() {
+    if (inView) return;
+    inView = true;
+    remaining = autoplayMs;
+    progress = reduce.matches ? 1 : 0;
+    pausedByDrag = false;
+    paintPips();
+    paintBars();
+    startPlay();
+  }
+
+  function leaveView() {
+    if (!inView) return;
+    inView = false;
+    pausedByDrag = false;
+    remaining = autoplayMs;
+    progress = reduce.matches ? 1 : 0;
+    stopPlay();
+    paintBars();
+  }
+
+  const view = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    if (entry.isIntersecting && entry.intersectionRatio >= 0.2) enterView();
+    else leaveView();
+  }, { threshold: [0, 0.2] });
+  view.observe(root);
 
   root.addEventListener("pointerdown", (event) => {
+    if (animating || dragging) return;
     if (event.button !== undefined && event.button !== 0) return;
+    const front = cards[index];
+    if (!front.contains(event.target) && event.target !== front) return;
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
-    origin = -index * slideW;
-    x = origin;
-    lastX = event.clientX;
-    lastT = performance.now();
-    velocity = 0;
     axis = null;
-    dragging = false;
+    dragX = 0;
+    pausedByDrag = true;
+    stopPlay();
     if (event.pointerType === "mouse") event.preventDefault();
   });
 
   function lockHorizontal(pointer) {
     if (dragging) return;
     dragging = true;
+    pausedByDrag = true;
+    stopPlay();
     root.classList.add("is-dragging");
-    track.style.transition = "none";
+    cards[index].classList.add("is-dragging");
     if (pointer !== undefined && root.setPointerCapture) {
       try { root.setPointerCapture(pointer); } catch (err) { /* already released */ }
     }
@@ -275,23 +411,30 @@ function initContextCarousel() {
       axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       if (axis === "y") {
         pointerId = null;
+        pausedByDrag = false;
+        startPlay();
         return;
       }
     }
     if (axis !== "x") return;
     lockHorizontal(event.pointerId);
-    const now = performance.now();
-    const dt = now - lastT;
-    if (dt > 0) {
-      const instant = (event.clientX - lastX) / dt / zoom();
-      velocity = velocity * 0.65 + instant * 0.35;
-    }
-    lastX = event.clientX;
-    lastT = now;
-    x = rubber(origin + (event.clientX - startX) / zoom());
-    render(x, false);
-    paintPips(clamp(Math.round(-x / slideW)));
+    dragX = dx / zoom();
+    layout(dragX);
   });
+
+  function finish(commit) {
+    root.classList.remove("is-dragging");
+    cards.forEach((card) => card.classList.remove("is-dragging"));
+    if (commit && (dragX > threshold || dragX < -threshold)) {
+      index = (index + 1) % count;
+      paintPips();
+      restartAutoplay();
+    } else {
+      pausedByDrag = false;
+      startPlay();
+    }
+    springToRest();
+  }
 
   function end(event) {
     if (pointerId === null || event.pointerId !== pointerId) return;
@@ -299,53 +442,51 @@ function initContextCarousel() {
     pointerId = null;
     dragging = false;
     axis = null;
-    root.classList.remove("is-dragging");
-    if (moved) commit();
+    if (moved) finish(true);
+    else {
+      pausedByDrag = false;
+      startPlay();
+    }
   }
 
-  root.addEventListener("pointerup", end);
-  root.addEventListener("pointercancel", end);
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", end);
   root.addEventListener("dragstart", (event) => event.preventDefault());
   root.addEventListener("touchmove", (event) => {
-    if (pointerId === null) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    if (!axis) {
-      const dx = touch.clientX - startX;
-      const dy = touch.clientY - startY;
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-      if (axis === "y") {
-        pointerId = null;
-        return;
-      }
-    }
     if (axis !== "x") return;
     event.preventDefault();
-    lockHorizontal();
-    const now = performance.now();
-    const dt = now - lastT;
-    if (dt > 0) {
-      const instant = (touch.clientX - lastX) / dt / zoom();
-      velocity = velocity * 0.65 + instant * 0.35;
-    }
-    lastX = touch.clientX;
-    lastT = now;
-    x = rubber(origin + (touch.clientX - startX) / zoom());
-    render(x, false);
-    paintPips(clamp(Math.round(-x / slideW)));
   }, { passive: false });
 
   if (pager) {
     pager.addEventListener("click", (event) => {
       const pip = event.target.closest(".ctx-pip");
-      if (!pip) return;
+      if (!pip || dragging) return;
       const next = pips.indexOf(pip);
-      if (next >= 0) setIndex(next, true);
+      if (next < 0 || next === index) return;
+      index = next;
+      paintPips();
+      restartAutoplay();
+      springToRest();
     });
   }
 
-  setIndex(0, false);
+  reduce.addEventListener("change", () => {
+    if (reduce.matches) {
+      stopPlay();
+      progress = 1;
+      paintBars();
+      layout(0);
+      return;
+    }
+    progress = 0;
+    remaining = autoplayMs;
+    paintBars();
+    startPlay();
+  });
+
+  layout(0);
+  paintPips();
+  paintBars();
 }
 
 initContextCarousel();
