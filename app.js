@@ -58,7 +58,10 @@ function initSignup() {
     if (root.hidden) return;
     root.hidden = true;
     const terms = document.getElementById("terms");
-    if (!terms || terms.hidden) document.body.style.overflow = "";
+    const hardware = document.getElementById("hardware");
+    const specs = document.getElementById("specs");
+    const still = (terms && !terms.hidden) || (hardware && !hardware.hidden) || (specs && !specs.hidden);
+    if (!still) document.body.style.overflow = "";
     openBtn.focus();
   }
 
@@ -93,7 +96,9 @@ function initTerms() {
 
   function syncScroll() {
     const signup = document.getElementById("signup");
-    const open = !root.hidden || (signup && !signup.hidden);
+    const hardware = document.getElementById("hardware");
+    const specs = document.getElementById("specs");
+    const open = !root.hidden || (signup && !signup.hidden) || (hardware && !hardware.hidden) || (specs && !specs.hidden);
     document.body.style.overflow = open ? "hidden" : "";
   }
 
@@ -150,9 +155,113 @@ function initTerms() {
   });
 }
 
+function initHardware() {
+  const openBtn = document.getElementById("hardware-open");
+  const root = document.getElementById("hardware");
+  if (!openBtn || !root) return;
+  const closeBtn = root.querySelector(".hardware-close");
+
+  function syncScroll() {
+    const signup = document.getElementById("signup");
+    const terms = document.getElementById("terms");
+    const specs = document.getElementById("specs");
+    const open = !root.hidden || (signup && !signup.hidden) || (terms && !terms.hidden) || (specs && !specs.hidden);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  function openHardware() {
+    root.hidden = false;
+    syncScroll();
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeHardware() {
+    if (root.hidden) return;
+    root.hidden = true;
+    syncScroll();
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener("click", openHardware);
+  openBtn.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openHardware();
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", closeHardware);
+
+  const notify = root.querySelector(".hardware-notify");
+  if (notify) {
+    notify.addEventListener("click", () => {
+      const buy = document.querySelector(".buy-cta");
+      if (buy) buy.click();
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || root.hidden) return;
+    const signup = document.getElementById("signup");
+    if (signup && !signup.hidden) return;
+    closeHardware();
+  });
+}
+
+function initSpecs() {
+  const openBtn = document.querySelector(".footer-specs");
+  const root = document.getElementById("specs");
+  if (!openBtn || !root) return;
+  const closeBtn = root.querySelector(".specs-close");
+
+  function syncScroll() {
+    const signup = document.getElementById("signup");
+    const terms = document.getElementById("terms");
+    const hardware = document.getElementById("hardware");
+    const open = !root.hidden || (signup && !signup.hidden) || (terms && !terms.hidden) || (hardware && !hardware.hidden);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  function openSpecs() {
+    root.hidden = false;
+    syncScroll();
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeSpecs() {
+    if (root.hidden) return;
+    root.hidden = true;
+    syncScroll();
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    openSpecs();
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", closeSpecs);
+
+  const notify = root.querySelector(".specs-notify");
+  if (notify) {
+    notify.addEventListener("click", () => {
+      const buy = document.querySelector(".buy-cta");
+      if (buy) buy.click();
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || root.hidden) return;
+    const signup = document.getElementById("signup");
+    if (signup && !signup.hidden) return;
+    closeSpecs();
+  });
+}
+
 initGate();
 initSignup();
 initTerms();
+initHardware();
+initSpecs();
 initLabWheel();
 initFooterWheel();
 
@@ -262,7 +371,11 @@ function initItogiDrag() {
   let maxScroll = 0;
 
   function layout() {
-    const scale = viewport.clientWidth / designW;
+    const width = viewport.clientWidth;
+    // #app is hidden on the first pass, so clientWidth is 0. Writing scale(0)
+    // sticks after unlock and the day summary stays blank until the thumb moves.
+    if (width < 1) return;
+    const scale = width / designW;
     const visualH = ui.offsetHeight * scale;
     maxScroll = Math.max(0, visualH - viewport.clientHeight);
     scroll = Math.min(Math.max(0, scroll), maxScroll);
@@ -371,6 +484,7 @@ function initItogiDrag() {
 
   function relayout() {
     layout();
+    if (viewport.clientWidth < 1) return;
     clipScrollports(viewport);
   }
 
@@ -379,6 +493,15 @@ function initItogiDrag() {
   });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
   window.addEventListener("resize", relayout);
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(() => relayout());
+    ro.observe(viewport);
+  }
+  const app = document.getElementById("app");
+  if (app && typeof MutationObserver === "function") {
+    const mo = new MutationObserver(() => relayout());
+    mo.observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  }
   relayout();
 }
 
@@ -764,12 +887,10 @@ function initMeetScrub() {
   const app = document.getElementById("app");
   if (!track || !pin || !phone || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
 
-  const sizes = [
-    { w: 226.29, h: 461.46 },
-    { w: 226.29, h: 461.46 },
-    { w: 329.3, h: 486.26 },
-    { w: 329.3, h: 486.26 },
-  ];
+  const baseW = 226.29;
+  const largeW = 329.3;
+  const fullScale = largeW / baseW;
+  const scales = [1, 1, fullScale, fullScale];
   const blockDesign = 603;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0;
@@ -837,10 +958,8 @@ function initMeetScrub() {
     const step = segmentAt(shown);
     hold(shots, step, shown);
     hold(caps, step, shown);
-    const w = sizes[step.a].w + (sizes[step.b].w - sizes[step.a].w) * step.t;
-    const h = sizes[step.a].h + (sizes[step.b].h - sizes[step.a].h) * step.t;
-    phone.style.width = w.toFixed(2) + "px";
-    phone.style.height = h.toFixed(2) + "px";
+    const scale = scales[step.a] + (scales[step.b] - scales[step.a]) * step.t;
+    phone.style.transform = "scale(" + scale + ")";
   }
 
   function requestTick() {
