@@ -5,9 +5,12 @@ function unlock() {
   sessionStorage.setItem(GATE_KEY, "1");
 }
 
+let recheckTalkTitle = function () {};
+
 function showApp() {
   document.getElementById("gate").hidden = true;
   document.getElementById("app").hidden = false;
+  recheckTalkTitle();
 }
 
 function initGate() {
@@ -272,13 +275,71 @@ function initLabWheel() {
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   const parts = wheels.map((el) => ({ el, base: el.style.transform.trim() }));
+  const flies = [...track.querySelectorAll(".lab-fly")].map((el) => ({
+    el,
+    x: Number(el.dataset.flyX),
+    y: Number(el.dataset.flyY),
+  }));
   const turn = 30;
+  const flightPx = 260;
+  const regularLagPx = 400;
   let frame = 0;
+
+  function easeOut(t) {
+    const x = Math.min(1, Math.max(0, t));
+    return 1 - (1 - x) ** 3;
+  }
+
+  function slotTop(el, progress, top, height, zoom) {
+    const localX = el.offsetLeft + el.offsetWidth / 2 - track.offsetWidth / 2;
+    const localY = el.offsetTop - track.offsetHeight / 2;
+    const rad = (progress * turn * Math.PI) / 180;
+    const rotY = localX * Math.sin(rad) + localY * Math.cos(rad);
+    return top + height / 2 + rotY * zoom;
+  }
+
+  function placeFlies(progress, metrics) {
+    if (!metrics) {
+      for (const fly of flies) fly.el.style.transform = "translate(0px, 0px)";
+      return;
+    }
+    const { top, height, zoom, vh } = metrics;
+    const span = flightPx * zoom;
+    const entered = new Map();
+    for (const fly of flies) {
+      entered.set(fly, vh - slotTop(fly.el, progress, top, height, zoom));
+    }
+    const regular = flies.find((fly) => fly.el.dataset.labFly === "regular");
+    const tariffs = flies.find((fly) => fly.el.dataset.labFly === "tariffs");
+    const gap = regular && tariffs ? entered.get(regular) - entered.get(tariffs) : span;
+    const delay = Math.max(0, span - gap);
+    const total = height + vh;
+    let regularShift = 0;
+    if (regular && total > 0) {
+      const localX = regular.el.offsetLeft + regular.el.offsetWidth / 2 - track.offsetWidth / 2;
+      const localY = regular.el.offsetTop - track.offsetHeight / 2;
+      let entry = 0.13;
+      for (let i = 0; i < 6; i++) {
+        const rad = (entry * turn * Math.PI) / 180;
+        const rotY = localX * Math.sin(rad) + localY * Math.cos(rad);
+        entry = (height / 2 + rotY * zoom) / total;
+      }
+      const delayed = entry + (regularLagPx * zoom) / total;
+      const delayedTop = vh - delayed * total;
+      regularShift = vh - slotTop(regular.el, delayed, delayedTop, height, zoom);
+    }
+    for (const fly of flies) {
+      const travel = entered.get(fly) - (fly === regular ? regularShift : 0) - (fly === tariffs ? delay : 0);
+      const k = 1 - easeOut(span > 0 ? travel / span : 1);
+      fly.el.style.transform = `translate(${(fly.x * k).toFixed(2)}px, ${(fly.y * k).toFixed(2)}px)`;
+    }
+  }
 
   function apply() {
     frame = 0;
     if (reduce.matches) {
       for (const { el, base } of parts) el.style.transform = base;
+      placeFlies(1, null);
       return;
     }
     const rect = track.getBoundingClientRect();
@@ -294,6 +355,7 @@ function initLabWheel() {
     for (const { el, base } of parts) {
       el.style.transform = base ? `${base} ${spin}` : spin;
     }
+    placeFlies(progress, { top, height, zoom, vh });
   }
 
   function requestTick() {
@@ -883,15 +945,19 @@ function initMeetScrub() {
   const phone = pin && pin.querySelector(".meet-phone");
   const shots = pin ? [...pin.querySelectorAll(".meet-shot")] : [];
   const caps = pin ? [...pin.querySelectorAll(".meet-cap")] : [];
+  const dim = pin && pin.querySelector(".meet-dim");
+  const jewel = pin && pin.querySelector(".meet-pin-jewel");
+  const ask = pin && pin.querySelector(".meet-ask");
   const stage = document.querySelector(".stage");
   const app = document.getElementById("app");
-  if (!track || !pin || !phone || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
+  if (!track || !pin || !phone || !dim || !jewel || !ask || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
 
   const baseW = 226.29;
   const largeW = 329.3;
   const fullScale = largeW / baseW;
   const scales = [1, 1, fullScale, fullScale];
   const blockDesign = 603;
+  const scrubDesign = 2200;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0;
 
@@ -901,11 +967,12 @@ function initMeetScrub() {
   }
 
   function segmentAt(progress) {
-    const segments = 3;
-    const x = Math.min(segments, Math.max(0, progress * segments));
-    const i = Math.min(segments - 1, Math.floor(x));
-    const t = progress >= 1 ? 1 : x - i;
-    return { a: i, b: Math.min(3, i + 1), t };
+    const dist = progress >= 1 ? scrubDesign : Math.min(scrubDesign, Math.max(0, progress * scrubDesign));
+    if (progress >= 1) return { a: 2, b: 3, t: 1 };
+    if (dist < 600) return { a: 0, b: 1, t: dist / 600 };
+    if (dist < 1000) return { a: 1, b: 1, t: 0 };
+    if (dist < 1600) return { a: 1, b: 2, t: (dist - 1000) / 600 };
+    return { a: 2, b: 3, t: (dist - 1600) / 600 };
   }
 
   function hold(nodes, step, progress) {
@@ -914,6 +981,27 @@ function initMeetScrub() {
       if (idx !== index) img.style.opacity = "0";
     });
     if (nodes[index]) nodes[index].style.opacity = "1";
+  }
+
+  function paintShots(step, progress) {
+    const overlay = !reduce.matches && progress < 1 && step.a === 0;
+    shots[1].style.transform = "";
+    if (!overlay) {
+      dim.style.opacity = "0";
+      hold(shots, step, progress);
+      return;
+    }
+    const t = step.t;
+    shots[0].style.opacity = "1";
+    shots[2].style.opacity = "0";
+    shots[3].style.opacity = "0";
+    dim.style.opacity = String(0.25 * t);
+    if (t <= 0) {
+      shots[1].style.opacity = "0";
+      return;
+    }
+    shots[1].style.opacity = "1";
+    shots[1].style.transform = "translateX(" + ((1 - t) * 100) + "%)";
   }
 
   function tick() {
@@ -944,8 +1032,8 @@ function initMeetScrub() {
         progress = 1;
       } else {
         top = pinTop;
-        const total = rect.height - blockV;
-        progress = total > 0 ? (pinTop - rect.top) / total : 0;
+        const scrubV = scrubDesign * zoom;
+        progress = scrubV > 0 ? Math.min(1, (pinTop - rect.top) / scrubV) : 0;
       }
     }
 
@@ -956,10 +1044,24 @@ function initMeetScrub() {
 
     const shown = reduce.matches ? 0 : progress;
     const step = segmentAt(shown);
-    hold(shots, step, shown);
+    paintShots(step, shown);
     hold(caps, step, shown);
+    const askShot = shown >= 1 ? step.b : step.a;
+    ask.style.opacity = askShot === 1 || askShot === 2 ? "1" : "0";
     const scale = scales[step.a] + (scales[step.b] - scales[step.a]) * step.t;
     phone.style.transform = "scale(" + scale + ")";
+
+    if (reduce.matches) {
+      jewel.style.visibility = "hidden";
+    } else {
+      const dist = shown >= 1 ? scrubDesign : Math.min(scrubDesign, Math.max(0, shown * scrubDesign));
+      let off = 1;
+      if (dist < 600) off = Math.pow(1 - dist / 600, 3);
+      else if (dist < 1000) off = 0;
+      else if (dist < 1600) off = Math.pow((dist - 1000) / 600, 3);
+      jewel.style.visibility = "";
+      jewel.style.transform = "translateX(" + (off * 100) + "px)";
+    }
   }
 
   function requestTick() {
@@ -979,6 +1081,188 @@ function initMeetScrub() {
 }
 
 
+function initTalkTitle() {
+  const titles = [...document.querySelectorAll(".talk-title")];
+  if (!titles.length) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const duration = 504;
+  const stagger = 17;
+  const easing = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+  const yFrom = Math.round(32 * 0.58 * 100) / 100;
+  const pending = new Set();
+  let observer = null;
+
+  function pose(y) {
+    return "translate3d(0px, " + y + "px, 0px) rotateX(0deg) rotateY(0deg) rotate(0deg) scale(1)";
+  }
+
+  function glyphs(title) {
+    return [...title.querySelectorAll(".text-animation-unit")];
+  }
+
+  function showSettled(title) {
+    glyphs(title).forEach((unit) => {
+      unit.style.opacity = "1";
+      unit.style.transform = pose(0);
+      unit.style.willChange = "auto";
+    });
+  }
+
+  function split(title) {
+    const source = title.innerHTML;
+    let rank = 0;
+    function visit(node) {
+      [...node.childNodes].forEach((child) => {
+        if (child.nodeType === 1) {
+          if (child.tagName !== "BR") visit(child);
+          return;
+        }
+        if (child.nodeType !== 3) return;
+        const text = child.textContent.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+        if (!text) {
+          child.remove();
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        function appendUnits(parent, value) {
+          Array.from(value).forEach((ch) => {
+            const unit = document.createElement("span");
+            unit.className = "text-animation-unit";
+            unit.textContent = ch;
+            unit.dataset.rank = String(rank);
+            unit.style.opacity = "0";
+            unit.style.transform = pose(yFrom);
+            rank += 1;
+            parent.appendChild(unit);
+          });
+        }
+        text.split(/([ \t]+)/).forEach((part) => {
+          if (!part) return;
+          if (/^[ \t]+$/.test(part)) {
+            appendUnits(frag, part);
+            return;
+          }
+          const word = document.createElement("span");
+          word.className = "text-animation-word";
+          appendUnits(word, part);
+          frag.appendChild(word);
+        });
+        child.replaceWith(frag);
+      });
+    }
+    try {
+      visit(title);
+      if (!rank) throw new Error("empty title");
+      return true;
+    } catch {
+      title.innerHTML = source;
+      return false;
+    }
+  }
+
+  function stopWatching() {
+    if (observer) observer.disconnect();
+    observer = null;
+    window.removeEventListener("scroll", recheckTalkTitle);
+    window.removeEventListener("resize", recheckTalkTitle);
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener("scroll", recheckTalkTitle);
+      window.visualViewport.removeEventListener("resize", recheckTalkTitle);
+    }
+    recheckTalkTitle = function () {};
+  }
+
+  function play(title) {
+    if (!pending.has(title)) return;
+    pending.delete(title);
+    if (observer) observer.unobserve(title);
+    try {
+      glyphs(title).forEach((unit) => {
+        const rank = Number(unit.dataset.rank) || 0;
+        const anim = unit.animate(
+          [
+            { opacity: 0, transform: pose(yFrom) },
+            { opacity: 1, transform: pose(0) },
+          ],
+          { delay: rank * stagger, duration: duration, easing: easing, fill: "forwards" }
+        );
+        anim.finished.then(() => {
+          unit.style.opacity = "1";
+          unit.style.transform = pose(0);
+          unit.style.willChange = "auto";
+        }).catch(() => {
+          unit.style.opacity = "1";
+          unit.style.transform = pose(0);
+          unit.style.willChange = "auto";
+        });
+      });
+    } catch {
+      showSettled(title);
+    }
+    if (!pending.size) stopWatching();
+  }
+
+  function appearsInViewport(title) {
+    const app = document.getElementById("app");
+    if (!app || app.hidden || title.closest("[hidden]")) return false;
+    const rect = title.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return false;
+    const vv = window.visualViewport;
+    const viewTop = vv ? vv.offsetTop : 0;
+    const viewLeft = vv ? vv.offsetLeft : 0;
+    const viewH = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+    const viewW = vv ? vv.width : (window.innerWidth || document.documentElement.clientWidth);
+    const overlapsX = rect.right > viewLeft && rect.left < viewLeft + viewW;
+    if (!overlapsX) return false;
+    const center = (rect.top + rect.bottom) / 2;
+    const mid = viewTop + viewH / 2;
+    return center <= mid;
+  }
+
+  titles.forEach((title) => {
+    if (split(title)) pending.add(title);
+  });
+  if (!pending.size) return;
+
+  recheckTalkTitle = function () {
+    [...pending].forEach((title) => {
+      if (appearsInViewport(title)) play(title);
+    });
+  };
+
+  if (typeof IntersectionObserver !== "function") {
+    pending.forEach(showSettled);
+    pending.clear();
+    return;
+  }
+
+  window.addEventListener("scroll", recheckTalkTitle, { passive: true });
+  window.addEventListener("resize", recheckTalkTitle);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("scroll", recheckTalkTitle, { passive: true });
+    window.visualViewport.addEventListener("resize", recheckTalkTitle);
+  }
+
+  try {
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        if (appearsInViewport(entry.target)) play(entry.target);
+      });
+    }, { root: null, rootMargin: "0px", threshold: 0 });
+    pending.forEach((title) => observer.observe(title));
+  } catch {
+    pending.forEach(showSettled);
+    pending.clear();
+    stopWatching();
+    return;
+  }
+
+  recheckTalkTitle();
+}
+
+initTalkTitle();
 initSecuritySlider();
 
 function initSecuritySlider() {
