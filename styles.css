@@ -638,81 +638,12 @@ body:has(#app[hidden]) .signup { display: none !important; }
 }
 .ctx-carousel {
   overflow: visible;
-  touch-action: pan-y;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
-  perspective: 1000px;
-  perspective-origin: 50% 40%;
 }
-.ctx-carousel,
-.ctx-carousel * { touch-action: pan-y; }
-.ctx-carousel.is-dragging { cursor: grabbing; }
-.ctx-track {
-  position: relative;
-  height: 100%;
-  transform-style: preserve-3d;
-}
-.ctx-slide {
-  position: absolute;
-  inset: 0;
-  width: 292.364px;
-  height: 480px;
-  transform-origin: center bottom;
-  will-change: transform;
-}
-/* Static stack frames; the live deck draws the cards behind. */
-.ctx-slide > :nth-child(-n+3) { display: none !important; }
 .ctx-carousel img {
   -webkit-user-drag: none;
-  user-select: none;
   pointer-events: none;
 }
 .ctx-pager { z-index: 3; }
-.ctx-pip {
-  appearance: none;
-  -webkit-appearance: none;
-  display: block;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-  position: relative;
-  border-radius: 12px;
-  flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  cursor: pointer;
-  transform: scale(0.33);
-  transition: width 0.2s ease;
-}
-.ctx-pip.is-on {
-  width: 32px;
-  transform: scale(1);
-}
-.ctx-pip.is-on + .ctx-pip,
-.ctx-pip:has(+ .ctx-pip.is-on) {
-  transform: scale(0.66);
-}
-.ctx-pip-bar {
-  position: absolute;
-  inset: 0;
-  background: #fff;
-  border-radius: inherit;
-  transform: scaleX(0);
-  transform-origin: left center;
-  pointer-events: none;
-}
-.ctx-pip:focus { outline: none; }
-.ctx-pip:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.9);
-  outline-offset: 2px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .ctx-track,
-  .ctx-pip { transition: none !important; }
-}
 .itogi-phone {
   position: absolute;
   left: 61.32px;
