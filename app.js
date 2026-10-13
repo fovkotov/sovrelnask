@@ -948,19 +948,76 @@ function initMeetScrub() {
   const dim = pin && pin.querySelector(".meet-dim");
   const jewel = pin && pin.querySelector(".meet-pin-jewel");
   const ask = pin && pin.querySelector(".meet-ask");
+  const home = pin && pin.querySelector(".meet-ask-home");
   const keyboard = pin && pin.querySelector(".meet-keyboard");
+  const keyboardLip = pin && pin.querySelector(".meet-keyboard-lip");
   const stage = document.querySelector(".stage");
   const app = document.getElementById("app");
-  if (!track || !pin || !phone || !dim || !jewel || !ask || !keyboard || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
+  if (!track || !pin || !phone || !dim || !jewel || !ask || !home || !keyboard || !keyboardLip || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
 
   const baseW = 226.29;
   const largeW = 329.3;
   const fullScale = largeW / baseW;
   const scales = [1, 1, fullScale, fullScale];
   const blockDesign = 603;
-  const scrubDesign = 2200;
+  const scrubDesign = 2000;
+  const askMs = 200;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0;
+  let askK = 0;
+  let askFrom = 0;
+  let askTo = 0;
+  let askStarted = 0;
+  let askPlaying = false;
+
+  function easeAsk(t) {
+    const x1 = 0.5;
+    const y1 = 0;
+    const x2 = 0.25;
+    const y2 = 1;
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let u = t;
+    for (let i = 0; i < 6; i++) {
+      const cx = 3 * x1;
+      const bx = 3 * (x2 - x1) - cx;
+      const ax = 1 - cx - bx;
+      const x = ((ax * u + bx) * u + cx) * u;
+      const dx = (3 * ax * u + 2 * bx) * u + cx;
+      if (Math.abs(dx) < 1e-6) break;
+      u -= (x - t) / dx;
+      if (u < 0) u = 0;
+      else if (u > 1) u = 1;
+    }
+    const cy = 3 * y1;
+    const by = 3 * (y2 - y1) - cy;
+    const ay = 1 - cy - by;
+    return ((ay * u + by) * u + cy) * u;
+  }
+
+  function seekAsk(now, on) {
+    const target = on ? 1 : 0;
+    if (reduce.matches) {
+      askK = target;
+      askTo = target;
+      askPlaying = false;
+      return;
+    }
+    if (!askPlaying && askK === target) return;
+    if (askTo !== target) {
+      askFrom = askK;
+      askTo = target;
+      askStarted = now;
+      askPlaying = true;
+    }
+    if (!askPlaying) return;
+    const t = Math.min(1, (now - askStarted) / askMs);
+    askK = askFrom + (askTo - askFrom) * easeAsk(t);
+    if (t >= 1) {
+      askK = askTo;
+      askPlaying = false;
+    }
+  }
 
   function zoomOf() {
     const n = parseFloat(getComputedStyle(stage).zoom);
@@ -969,11 +1026,10 @@ function initMeetScrub() {
 
   function segmentAt(progress) {
     const dist = progress >= 1 ? scrubDesign : Math.min(scrubDesign, Math.max(0, progress * scrubDesign));
-    if (progress >= 1) return { a: 2, b: 3, t: 1 };
     if (dist < 600) return { a: 0, b: 1, t: dist / 600 };
     if (dist < 1000) return { a: 1, b: 1, t: 0 };
     if (dist < 1600) return { a: 1, b: 2, t: (dist - 1000) / 600 };
-    return { a: 2, b: 3, t: (dist - 1600) / 600 };
+    return { a: 2, b: 2, t: 0 };
   }
 
   function keyboardHeight() {
@@ -981,14 +1037,6 @@ function initMeetScrub() {
     if (h > 0) return h;
     const w = keyboard.offsetWidth || phone.clientWidth * 0.89151874;
     return w * (528 / 679);
-  }
-
-  function keyboardT(step, shown) {
-    const index = shown >= 1 ? step.b : step.a;
-    if (reduce.matches) return index === 3 ? 1 : 0;
-    if (shown >= 1) return 1;
-    if (step.a === 2 && step.b === 3) return step.t;
-    return 0;
   }
 
   function hold(nodes, step, progress) {
@@ -1060,14 +1108,34 @@ function initMeetScrub() {
 
     const shown = reduce.matches ? 0 : progress;
     const step = segmentAt(shown);
+    const past = shown >= 1;
+    seekAsk(performance.now(), past);
+    const stage4 = past && !askPlaying && askK >= 1;
     paintShots(step, shown);
     hold(caps, step, shown);
-    const askShot = shown >= 1 ? step.b : step.a;
-    const k = keyboardT(step, shown);
+    if (stage4) {
+      shots.forEach((img, idx) => {
+        img.style.opacity = idx === 3 ? "1" : "0";
+      });
+      shots[1].style.transform = "";
+      dim.style.opacity = "0";
+      caps.forEach((cap, idx) => {
+        cap.style.opacity = idx === 3 ? "1" : "0";
+      });
+    }
+    const askShot = stage4 ? 3 : (shown >= 1 ? step.b : step.a);
+    const k = askK;
     const kbH = keyboardHeight();
-    keyboard.style.transform = "translate3d(0," + ((1 - k) * (kbH + 2)).toFixed(2) + "px,0)";
-    ask.style.transform = "translate3d(0," + ((-k) * kbH).toFixed(2) + "px,0)";
+    const homeH = 20.627;
+    const lift = k * Math.max(0, kbH - homeH);
+    const slide = "translate3d(0," + ((1 - k) * (kbH + 2)).toFixed(2) + "px,0)";
+    keyboard.style.transform = slide;
+    keyboardLip.style.transform = slide;
+    ask.style.transform = "translate3d(0," + (-lift).toFixed(2) + "px,0)";
+    home.style.transform = "translate3d(0,0,0)";
+    home.style.backgroundColor = "rgba(232, 232, 232, " + (1 - k).toFixed(3) + ")";
     ask.style.opacity = askShot === 1 || askShot === 2 ? "1" : "0";
+    home.style.opacity = askShot === 1 || askShot === 2 || askShot === 3 ? "1" : "0";
     const scale = scales[step.a] + (scales[step.b] - scales[step.a]) * step.t;
     phone.style.transform = "scale(" + scale + ")";
 
@@ -1082,6 +1150,7 @@ function initMeetScrub() {
       jewel.style.visibility = "";
       jewel.style.transform = "translateX(" + (off * 100) + "px)";
     }
+    if (askPlaying) requestTick();
   }
 
   function requestTick() {
@@ -1106,16 +1175,19 @@ function initTalkTitle() {
   if (!titles.length) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  const duration = 504;
-  const stagger = 17;
-  const easing = "cubic-bezier(0.2, 0.8, 0.2, 1)";
-  const yFrom = Math.round(32 * 0.58 * 100) / 100;
+  const duration = 140;
+  const stagger = 56;
+  const easing = "steps(1, end)";
   const pending = new Set();
   let observer = null;
 
-  function pose(y) {
-    return "translate3d(0px, " + y + "px, 0px) rotateX(0deg) rotateY(0deg) rotate(0deg) scale(1)";
+  function pose(yPx, scale) {
+    const y = Math.round(yPx * 0.58 * 100) / 100;
+    return "translate3d(0px, " + y + "px, 0px) rotateX(0deg) rotateY(0deg) rotate(0deg) scale(" + scale + ")";
   }
+
+  const fromPose = pose(0, 1);
+  const toPose = pose(0, 1);
 
   function glyphs(title) {
     return [...title.querySelectorAll(".text-animation-unit")];
@@ -1124,7 +1196,7 @@ function initTalkTitle() {
   function showSettled(title) {
     glyphs(title).forEach((unit) => {
       unit.style.opacity = "1";
-      unit.style.transform = pose(0);
+      unit.style.transform = toPose;
       unit.style.willChange = "auto";
     });
   }
@@ -1132,6 +1204,56 @@ function initTalkTitle() {
   function split(title) {
     const source = title.innerHTML;
     let rank = 0;
+    function makeWord(part) {
+      const word = document.createElement("span");
+      word.className = "text-animation-word";
+      Array.from(part).forEach((glyph) => {
+        const unit = document.createElement("span");
+        unit.className = "text-animation-unit";
+        unit.textContent = glyph;
+        unit.dataset.rank = String(rank);
+        unit.style.opacity = "0";
+        unit.style.transform = fromPose;
+        rank += 1;
+        word.appendChild(unit);
+      });
+      return word;
+    }
+    function makeSpace(part) {
+      const space = document.createElement("span");
+      space.className = "text-animation-space";
+      space.textContent = part;
+      return space;
+    }
+    function appendParts(parent, text) {
+      const parts = text.match(/(\S+|\s+)/g);
+      if (!parts) return;
+      let i = 0;
+      while (i < parts.length) {
+        const part = parts[i];
+        if (/^\s+$/.test(part)) {
+          parent.appendChild(makeSpace(part));
+          i += 1;
+          continue;
+        }
+        const glued = i + 2 < parts.length && /^[\u00A0\u202F]+$/.test(parts[i + 1]) && !/^\s+$/.test(parts[i + 2]);
+        if (!glued) {
+          parent.appendChild(makeWord(part));
+          i += 1;
+          continue;
+        }
+        const glue = document.createElement("span");
+        glue.className = "text-animation-glue";
+        glue.appendChild(makeWord(part));
+        i += 1;
+        while (i + 1 < parts.length && /^[\u00A0\u202F]+$/.test(parts[i]) && !/^\s+$/.test(parts[i + 1])) {
+          glue.appendChild(makeSpace(parts[i]));
+          glue.appendChild(makeWord(parts[i + 1]));
+          i += 2;
+        }
+        parent.appendChild(glue);
+      }
+    }
     function visit(node) {
       [...node.childNodes].forEach((child) => {
         if (child.nodeType === 1) {
@@ -1145,29 +1267,7 @@ function initTalkTitle() {
           return;
         }
         const frag = document.createDocumentFragment();
-        function appendUnits(parent, value) {
-          Array.from(value).forEach((ch) => {
-            const unit = document.createElement("span");
-            unit.className = "text-animation-unit";
-            unit.textContent = ch;
-            unit.dataset.rank = String(rank);
-            unit.style.opacity = "0";
-            unit.style.transform = pose(yFrom);
-            rank += 1;
-            parent.appendChild(unit);
-          });
-        }
-        text.split(/([ \t]+)/).forEach((part) => {
-          if (!part) return;
-          if (/^[ \t]+$/.test(part)) {
-            appendUnits(frag, part);
-            return;
-          }
-          const word = document.createElement("span");
-          word.className = "text-animation-word";
-          appendUnits(word, part);
-          frag.appendChild(word);
-        });
+        appendParts(frag, text);
         child.replaceWith(frag);
       });
     }
@@ -1202,18 +1302,21 @@ function initTalkTitle() {
         const rank = Number(unit.dataset.rank) || 0;
         const anim = unit.animate(
           [
-            { opacity: 0, transform: pose(yFrom) },
-            { opacity: 1, transform: pose(0) },
+            { opacity: 0, transform: fromPose },
+            { opacity: 1, transform: toPose },
           ],
           { delay: rank * stagger, duration: duration, easing: easing, fill: "forwards" }
         );
         anim.finished.then(() => {
           unit.style.opacity = "1";
-          unit.style.transform = pose(0);
+          unit.style.transform = toPose;
           unit.style.willChange = "auto";
+          // steps(1, end) can finish still on the first keyframe. That fill
+          // overrides the inline opacity and hides the last letters.
+          anim.cancel();
         }).catch(() => {
           unit.style.opacity = "1";
-          unit.style.transform = pose(0);
+          unit.style.transform = toPose;
           unit.style.willChange = "auto";
         });
       });

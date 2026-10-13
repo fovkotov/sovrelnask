@@ -49,7 +49,7 @@ a { color: inherit; }
 .art {
   position: relative;
   width: 375px;
-  height: calc(19961px + var(--flow-shift) + var(--cards-pin));
+  height: calc(20121px + var(--flow-shift) + var(--cards-pin));
   overflow: hidden;
   background: #dbdfe7;
 }
@@ -60,16 +60,23 @@ a { color: inherit; }
   display: inline-block;
   transform-style: preserve-3d;
 }
-.talk-title .text-animation-word {
-  display: inline-block;
-  white-space: nowrap;
-}
 .talk-title .text-animation-unit {
   display: inline-block;
   white-space: pre;
   transform-origin: 50% 55%;
   backface-visibility: hidden;
   will-change: transform, opacity, filter;
+}
+.talk-title .text-animation-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.talk-title .text-animation-space {
+  display: inline;
+  white-space: pre;
+}
+.talk-title .text-animation-glue {
+  white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   .talk-title .text-animation-unit {
@@ -86,8 +93,8 @@ a { color: inherit; }
   --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px + 8px)));
   --hero-video-h: calc(var(--hero-h) * 578.377 / 464);
   --flow-shift: calc(var(--hero-h) - 472px);
-  /* meeting card: 600px into state 2, 400px hold, 600px scale, 600px state 3, 400px hold on state 4 */
-  --cards-pin: 2600px;
+  /* meeting card: 600px into state 2, 400px hold, 600px scale, 400px hold on enlarged ask, then a 200ms trigger into state 4 and a 400px hold */
+  --cards-pin: 2400px;
 }
 @media (max-width: 768px) {
   :root { --screen-h: calc(100svh / (100vw / 375px)); }
@@ -183,18 +190,28 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   pointer-events: none;
   transform: translate3d(0, calc(100% + 2px), 0);
 }
-.meet-ask {
+.meet-keyboard-lip {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 4;
+  height: 6.84px;
+  background: #d1d6db;
+  pointer-events: none;
+  transform: translate3d(0, calc(100% + 2px), 0);
+}
+.meet-ask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 20.627px;
   z-index: 5;
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  height: 64.308px;
-  background: linear-gradient(to bottom, rgba(232, 232, 232, 0) 0%, #e8e8e8 50.11%);
+  background: linear-gradient(to bottom, rgba(232, 232, 232, 0) 0, #e8e8e8 32.225px);
   opacity: 0;
   pointer-events: none;
 }
@@ -246,16 +263,23 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   height: 12.134px;
 }
 .meet-ask-home {
-  position: relative;
-  flex: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
   width: 100%;
   height: 20.627px;
+  background: #e8e8e8;
+  opacity: 0;
+  pointer-events: none;
 }
 .meet-ask-home::before {
   content: "";
   position: absolute;
   left: calc(50% + 0.3px);
   bottom: 4.85px;
+  z-index: 1;
   width: 81.296px;
   height: 3.033px;
   border-radius: 100px;
@@ -376,70 +400,6 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   object-fit: cover;
   object-position: center;
 }
-.hero-lockup {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  width: 148px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 3;
-  pointer-events: none;
-  color: #fff;
-}
-.hero-lockup-marks {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-}
-.hero-lockup-marks img,
-.hero-lockup-alice {
-  display: block;
-  width: 36px;
-  height: 36px;
-  flex: none;
-}
-.hero-lockup-alice {
-  position: relative;
-}
-.hero-lockup-alice > span {
-  position: absolute;
-  top: 1.56%;
-  bottom: 1.56%;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero-lockup-flip {
-  display: block;
-  width: 100%;
-  height: 100%;
-  transform: scaleX(-1);
-}
-.hero-lockup-alice img {
-  width: 100%;
-  height: 100%;
-}
-.hero-lockup p {
-  margin: 0;
-  font-family: "YS Compressed", sans-serif;
-  font-weight: 700;
-  font-style: normal;
-  font-size: 46px;
-  line-height: normal;
-  letter-spacing: -0.46px;
-  text-transform: uppercase;
-  color: #fff;
-  white-space: nowrap;
-  font-feature-settings: "ss01" 1;
-  text-box-trim: trim-both;
-  text-box-edge: cap alphabetic;
-}
 .hero-title { top: calc(var(--hero-h) + 32px); }
 .hero-title .hero-lead {
   margin: 12px 0 0;
@@ -455,6 +415,73 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   font-feature-settings: normal;
 }
 .feature-cards { top: calc(var(--hero-h) + 32px + 64px + 12px + 44px + 120px); }
+.pin-plaque {
+  position: fixed;
+  z-index: 35;
+  left: calc(50% - 375px / 2 + 16px);
+  top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 20px 12px 12px;
+  border-radius: 30px;
+  background: #FFF;
+  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+.pin-plaque-marks {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  flex: none;
+}
+.pin-plaque-marks > img,
+.pin-plaque-alice {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.pin-plaque-alice { position: relative; }
+.pin-plaque-alice > span {
+  position: absolute;
+  top: 1.56%;
+  bottom: 1.56%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pin-plaque-flip {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+.pin-plaque-flip img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pin-plaque p {
+  margin: 0;
+  font-family: "YS Compressed", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 40px;
+  line-height: normal;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: rgba(48, 43, 49, 0.9);
+  white-space: nowrap;
+  font-feature-settings: "ss01" 1;
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+body:has(#app[hidden]) .pin-plaque { display: none !important; }
 .buy-cta-pos {
   position: fixed;
   z-index: 40;
@@ -488,6 +515,12 @@ body:has(#app[hidden]) .specs { display: none !important; }
     bottom: calc(8px * (100vw / 375px));
     transform: translateX(calc(-50% + 0.5px)) scale(calc(100vw / 375px));
     transform-origin: center bottom;
+  }
+  .pin-plaque {
+    left: calc(16px * (100vw / 375px));
+    top: calc(16px * (100vw / 375px));
+    transform: scale(calc(100vw / 375px));
+    transform-origin: left top;
   }
 }
 .gate:not([hidden]) {
