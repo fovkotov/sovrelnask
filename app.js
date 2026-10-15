@@ -254,32 +254,216 @@ initFooterWheel();
 function initLabWheel() {
   const wheels = [...document.querySelectorAll(".lab-wheel")];
   const track = document.querySelector(".lab-wheel[data-lab-track]");
-  if (!wheels.length || !track) return;
+  const disc = wheels.find((el) => el !== track);
+  const rotor = disc && disc.querySelector(":scope > div");
+  const plate = rotor && rotor.querySelector(":scope > div");
+  if (!wheels.length || !track || !disc || !rotor || !plate) return;
 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const parts = wheels.map((el) => ({ el, base: el.style.transform.trim() }));
   const turn = 30;
+  const baseMatch = /rotate\(\s*([-\d.]+)deg\)/.exec(rotor.style.transform || "");
+  const baseDeg = baseMatch ? parseFloat(baseMatch[1]) : 0;
+  const plateW = parseFloat(plate.style.width);
+  const plateH = parseFloat(plate.style.height);
+  const trackW = parseFloat(track.style.width);
+  const trackH = parseFloat(track.style.height);
   let frame = 0;
+  let tight = false;
+  let ringNode = null;
+  let cachedHeight = null;
+  let spinning = false;
+  let rotorText = "";
+  let ringText = "";
+  let fit = null;
+
+  const anchor = document.createElement("div");
+  anchor.className = "lab-anchor";
+  anchor.style.cssText = "position:absolute;width:0;height:0;pointer-events:none;";
+  anchor.style.left = (parseFloat(track.style.left) + trackW / 2) + "px";
+  anchor.style.top = (parseFloat(track.style.top) + trackH / 2) + "px";
+  track.parentElement.appendChild(anchor);
+
+  function pct(value) {
+    return value && value.endsWith("%") ? parseFloat(value) / 100 : 0;
+  }
+
+  function readStageZoom() {
+    const stage = document.querySelector(".stage");
+    if (!stage || !stage.offsetWidth) return 1;
+    const width = stage.getBoundingClientRect().width;
+    return width ? width / stage.offsetWidth : 1;
+  }
+
+  // Keep the spinning plate under the GPU texture limit (4096). The static
+  // scale on .lab-fit restores the original CSS size, so the picture matches.
+  function fitPlate() {
+    const zoom = readStageZoom();
+    const dpr = window.devicePixelRatio || 1;
+    const px = plateW * dpr * zoom;
+    const shrink = px > 3840 ? 3840 / px : 1;
+    const w = plateW * shrink;
+    const h = plateH * shrink;
+    if (!fit) {
+      fit = document.createElement("div");
+      fit.className = "lab-fit";
+      rotor.parentElement.insertBefore(fit, rotor);
+      fit.appendChild(rotor);
+    }
+    plate.style.width = w + "px";
+    plate.style.height = h + "px";
+    fit.style.width = w + "px";
+    fit.style.height = h + "px";
+    fit.style.flex = "none";
+    fit.style.transform = shrink < 0.999 ? "scale(" + (1 / shrink) + ")" : "";
+    cachedHeight = null;
+  }
+
+  function cropRing(img) {
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return null;
+    const step = 4;
+    const sw = Math.ceil(nw / step);
+    const sh = Math.ceil(nh / step);
+    const probe = document.createElement("canvas");
+    probe.width = sw;
+    probe.height = sh;
+    const pctx = probe.getContext("2d", { willReadFrequently: true });
+    pctx.drawImage(img, 0, 0, sw, sh);
+    const data = pctx.getImageData(0, 0, sw, sh).data;
+    let minX = sw;
+    let minY = sh;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < sh; y++) {
+      const row = y * sw;
+      for (let x = 0; x < sw; x++) {
+        if (data[(row + x) * 4 + 3] > 2) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null;
+    const pad = 12;
+    const x0 = Math.max(0, minX * step - pad);
+    const y0 = Math.max(0, minY * step - pad);
+    const x1 = Math.min(nw, (maxX + 1) * step + pad);
+    const y1 = Math.min(nh, (maxY + 1) * step + pad);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, x1 - x0);
+    canvas.height = Math.max(1, y1 - y0);
+    canvas.getContext("2d").drawImage(img, x0, y0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+    const tL = parseFloat(track.style.left);
+    const tT = parseFloat(track.style.top);
+    const imgL = tL + pct(img.style.left) * trackW;
+    const imgT = tT + pct(img.style.top) * trackH;
+    const qx = imgL + (x0 / nw) * trackW;
+    const qy = imgT + (y0 / nh) * trackH;
+    const qw = ((x1 - x0) / nw) * trackW;
+    const qh = ((y1 - y0) / nh) * trackH;
+    canvas.className = "lab-ring";
+    canvas.style.position = "absolute";
+    canvas.style.left = qx + "px";
+    canvas.style.top = qy + "px";
+    canvas.style.width = qw + "px";
+    canvas.style.height = qh + "px";
+    canvas.style.transformOrigin = (tL + trackW / 2 - qx) + "px " + (tT + trackH / 2 - qy) + "px";
+    canvas.setAttribute("aria-hidden", "true");
+    track.parentElement.appendChild(canvas);
+    img.remove();
+    return canvas;
+  }
+
+  // The plate PNG is 16-bit 3560². An 8-bit canvas at the same pixels is what
+  // the screen can show, and the 16-bit decode can be dropped.
+  function rasterPlate(img) {
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    if (!nw || !nh) return;
+    const edge = Math.min(nw, 4096);
+    const canvas = document.createElement("canvas");
+    canvas.width = edge;
+    canvas.height = Math.max(1, Math.round(nh * (edge / nw)));
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    canvas.style.cssText = img.style.cssText;
+    canvas.setAttribute("aria-hidden", "true");
+    img.replaceWith(canvas);
+  }
+
+  function prepare() {
+    if (tight) return;
+    const ringImg = track.querySelector("img");
+    const plateImg = plate.querySelector("img");
+    if (!ringImg || !plateImg || !ringImg.naturalWidth || !plateImg.naturalWidth) return;
+    rotor.classList.add("lab-rotor");
+    ringNode = cropRing(ringImg);
+    fitPlate();
+    rasterPlate(plateImg);
+    disc.style.transform = "";
+    track.style.transform = "";
+    cachedHeight = track.getBoundingClientRect().height;
+    if (!(cachedHeight > 1)) cachedHeight = null;
+    tight = true;
+    rotorText = "";
+    ringText = "";
+  }
+
+  function paintSpin(progress, top) {
+    const angle = (progress * turn).toFixed(3);
+    const rotorNext = "rotate(" + (baseDeg + parseFloat(angle)).toFixed(3) + "deg)";
+    const ringNext = "rotate(" + angle + "deg)";
+    if (rotorNext !== rotorText) {
+      rotorText = rotorNext;
+      rotor.style.transform = rotorNext;
+    }
+    if (ringNode && ringNext !== ringText) {
+      ringText = ringNext;
+      ringNode.style.transform = ringNext;
+    }
+    const near = top < window.innerHeight + 240 && top + cachedHeight > -240;
+    if (near !== spinning) {
+      spinning = near;
+      const hint = near ? "transform" : "auto";
+      rotor.style.willChange = hint;
+      if (ringNode) ringNode.style.willChange = hint;
+    }
+  }
 
   function apply() {
     frame = 0;
+    if (!tight) prepare();
+    if (!tight) return;
     if (reduce.matches) {
-      for (const { el, base } of parts) el.style.transform = base;
+      const still = "rotate(" + baseDeg + "deg)";
+      if (rotorText !== still) {
+        rotorText = still;
+        rotor.style.transform = still;
+      }
+      if (ringNode && ringText !== "") {
+        ringText = "";
+        ringNode.style.transform = "";
+      }
+      disc.style.transform = "";
+      track.style.transform = "";
       return;
     }
-    const rect = track.getBoundingClientRect();
-    const stage = document.querySelector(".stage");
-    const stageBox = stage.getBoundingClientRect();
-    const zoom = stage.offsetWidth ? stageBox.width / stage.offsetWidth : 1;
-    const height = track.offsetHeight * zoom;
-    const top = rect.top + rect.height / 2 - height / 2;
-    const vh = window.innerHeight;
-    const total = height + vh;
-    const progress = total > 0 ? Math.min(1, Math.max(0, (vh - top) / total)) : 0;
-    const spin = `rotate(${(progress * turn).toFixed(3)}deg)`;
-    for (const { el, base } of parts) {
-      el.style.transform = base ? `${base} ${spin}` : spin;
+    if (!(cachedHeight > 1)) {
+      const measured = track.getBoundingClientRect().height;
+      if (measured > 1) cachedHeight = measured;
     }
+    if (!(cachedHeight > 1)) return;
+    const center = anchor.getBoundingClientRect().top;
+    const top = center - cachedHeight / 2;
+    const vh = window.innerHeight;
+    const total = cachedHeight + vh;
+    const progress = total > 0 ? Math.min(1, Math.max(0, (vh - top) / total)) : 0;
+    paintSpin(progress, top);
   }
 
   function requestTick() {
@@ -287,13 +471,32 @@ function initLabWheel() {
     frame = requestAnimationFrame(apply);
   }
 
+  function onResize() {
+    cachedHeight = null;
+    if (tight) fitPlate();
+    requestTick();
+  }
+
+  // Stack writes its transforms first, then asks for the wheel angle so the
+  // anchor read sees this frame's position and nothing reads after the spin.
+  initLabWheel.flush = function () {
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    apply();
+  };
+
   window.addEventListener("scroll", requestTick, { passive: true });
-  window.addEventListener("resize", requestTick, { passive: true });
+  window.addEventListener("resize", onResize, { passive: true });
   if (window.visualViewport) {
     window.visualViewport.addEventListener("scroll", requestTick, { passive: true });
-    window.visualViewport.addEventListener("resize", requestTick, { passive: true });
+    window.visualViewport.addEventListener("resize", onResize, { passive: true });
   }
   reduce.addEventListener("change", requestTick);
+  const wait = [track.querySelector("img"), plate.querySelector("img")].filter(Boolean);
+  wait.forEach((img) => {
+    if (!img.complete) img.addEventListener("load", requestTick, { once: true });
+  });
+  if (document.readyState !== "complete") window.addEventListener("load", requestTick, { once: true });
   apply();
 }
 
@@ -641,12 +844,19 @@ function initDeviceSlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
-  let placed = false;
+  // Stack reparents this scroller after the first write, which drops scrollLeft
+  // back to 0 and shows the face puck. Keep the side view centered until
+  // the person actually drags. The track stays 375px; rest is not a snap.
+  let touched = false;
   function frameRest() {
-    if (placed || dragging || Number.isNaN(rest) || limit() <= 0) return;
-    root.scrollLeft = clamp(rest);
-    placed = true;
+    if (touched || dragging || Number.isNaN(rest)) return;
+    const max = limit();
+    if (max <= 0) return;
+    const target = Math.min(max, Math.max(0, rest));
+    if (Math.abs(root.scrollLeft - target) < 1) return;
+    root.scrollLeft = target;
   }
+  root._pinDeviceRest = frameRest;
 
   frameRest();
   requestAnimationFrame(frameRest);
@@ -681,6 +891,7 @@ function initDeviceSlider() {
         return;
       }
       dragging = true;
+      touched = true;
       root.classList.add("is-dragging");
       root.setPointerCapture(event.pointerId);
     }
@@ -732,6 +943,7 @@ function initDeviceSlider() {
     else if (event.deltaMode === 2) delta *= root.clientWidth;
     const next = clamp(root.scrollLeft + delta / zoom());
     if (next === root.scrollLeft) return;
+    touched = true;
     root.scrollLeft = next;
     event.preventDefault();
   }, { passive: false });
@@ -739,6 +951,7 @@ function initDeviceSlider() {
   root.addEventListener("keydown", (event) => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
+    touched = true;
     const dir = event.key === "ArrowRight" ? 1 : -1;
     root.scrollLeft = clamp(root.scrollLeft + dir * 160);
   });
@@ -2066,7 +2279,9 @@ function initStackCards() {
       const bare = index === 4;
       const memory = index === 3;
       const hardware = index === 5;
-      card.className = "stack-card" + (plain ? " is-plain" : "") + (bare ? " is-bare" : "") + (memory ? " is-memory" : "") + (hardware ? " is-hardware" : "");
+      const flush = index === 6;
+      const dock = index === 0;
+      card.className = "stack-card" + (plain ? " is-plain" : "") + (bare ? " is-bare" : "") + (memory ? " is-memory" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-flush" : "") + (dock ? " is-dock" : "");
       const plate = document.createElement("div");
       plate.className = "stack-plate";
       const leadEl = document.createElement("div");
@@ -2089,7 +2304,7 @@ function initStackCards() {
       card.appendChild(content);
       card.appendChild(arc);
       host.appendChild(card);
-      return { card, plate, content, arc, origin, lead, leadEl };
+      return { card, plate, content, arc, origin, lead, leadEl, dock, cover: plain };
     });
     app.appendChild(host);
     footer.style.translate = "none";
@@ -2192,31 +2407,47 @@ function initStackCards() {
       const prev = index > 0 ? spans[index - 1] : null;
       // Next sheet is already parked under the current one for the whole
       // content phase, not only during exit. Turning it on at exit is the pop.
-      const showFrom = prev ? -(prev.content + prev.exit) : 0;
+      // The pin sheet is the exception: it stays hidden until the wheel has
+      // finished, then rises over that stopped sheet instead of waiting under it.
+      const showFrom = prev ? (card.cover ? -prev.exit : -(prev.content + prev.exit)) : 0;
       const lead = span.lead || 0;
       // First cluster is already in the page. Pin starts when its top arrives;
       // visibility must not flip on that frame.
       const inFlow = index === 0 && local < span.enter;
-      const visible = inFlow || (local >= showFrom && local < span.total);
+      // Wheel stays put after its own content, under the rising pin sheet,
+      // until Alice's field has covered the viewport. Release before halfway
+      // so «Оставайся» can still show through Alice, under her, not under the wheel.
+      const pinSpan = spans[1];
+      const pinLocal = pinSpan ? scroll - origin - pinSpan.start : Infinity;
+      const pinCover = pinSpan ? Math.min(640, pinSpan.content * 0.45) : 0;
+      const pinStillOverWheel = !!(pinSpan && pinLocal < (pinSpan.enter || 0) + pinCover);
+      const holding = !!(card.dock && pinStillOverWheel && local >= span.enter + span.content);
+      const visible = inFlow || (local >= showFrom && local < span.total) || holding;
       let F = 0;
       let O = 0;
       if (local < 0) {
-        F = lead > 0 ? 0 : span.enter;
+        F = card.cover ? -local : (lead > 0 ? 0 : span.enter);
       } else if (local < span.enter) {
         if (lead > 0) O = -local;
         else F = span.enter === 0 ? 0 : span.enter * (1 - local / span.enter);
       } else if (local < span.enter + span.content) {
         O = -(lead + (local - span.enter));
+      } else if (holding) {
+        F = 0;
+        O = -(lead + span.content);
       } else {
         F = -(local - span.enter - span.content);
         O = -(lead + span.content);
       }
-      const stuck = visible && !inFlow && local < span.enter + span.content;
+      const stuck = visible && !inFlow && (local < span.enter + span.content || holding);
       card.card.classList.toggle("is-pinned", stuck);
       card.card.classList.toggle("is-live", inFlow || (visible && local >= 0 && local < span.enter + span.content));
       put(card.card, "visibility", visible ? "visible" : "hidden");
       put(card.card, "height", px(view) + "px");
-      put(card.card, "zIndex", local >= 0 ? "5" : "3");
+      let z = local >= 0 ? "5" : "3";
+      if (holding) z = "4";
+      if (card.cover && visible && local < span.enter + span.content) z = "6";
+      put(card.card, "zIndex", z);
       let shiftText;
       if (!visible) shiftText = "translate3d(0,-20000px,0)";
       else if (inFlow) shiftText = "none";
@@ -2250,35 +2481,147 @@ function initStackCards() {
       }
     });
     put(state.gap, "display", "none");
-    // Alice has no plate, so the parked «Оставайся» sheet shows through it.
-    // Keep the sheet; hide its copy while it still shares pixels with Alice
-    // (paragraph, device, background, later copy). Empty visibility inherits
-    // the card, so a hidden card does not leak the copy.
+    // «Оставайся» is parked under Alice. The purple field and the puck box
+    // used to keep the copy hidden until Alice had fully left. Show it once
+    // Alice's own content is about halfway down, and keep it hidden while it
+    // would still sit on Alice's paragraph or be cut by the puck.
+    // The phone and talk-bg use that same moment: they stay hidden until the
+    // words appear, then ride with this block, under the words.
     if (!state.talkCopy) {
       const talk = document.querySelector('[data-section="talk"]');
       const title = talk && [...talk.querySelectorAll(".talk-title")].find((el) => (el.textContent || "").replace(/\s+/g, " ").includes("Оставайся"));
       state.talkCopy = title ? title.parentElement : null;
+      state.talkTitle = title || null;
       const alice = document.querySelector('[data-section="alice"]');
-      state.aliceBlockers = alice ? [...alice.children] : [];
+      const heading = alice && [...alice.querySelectorAll(".talk-title")].find((el) => (el.textContent || "").replace(/\s+/g, " ").includes("напарник"));
+      state.aliceIntro = heading ? heading.parentElement : null;
+      state.alicePuck = alice ? alice.querySelector('img[src*="alice-puck"]') : null;
+      state.talkCard = state.talkCopy ? state.cards.find((card) => card.content.contains(state.talkCopy)) : null;
+      const veil = [];
+      const scene = [];
+      if (state.talkCard) {
+        if (state.talkCard.plate) veil.push(state.talkCard.plate);
+        if (state.talkCard.leadEl) veil.push(state.talkCard.leadEl);
+        if (state.talkCard.arc) veil.push(state.talkCard.arc);
+        for (const el of state.talkCard.content.children) {
+          if (talk && el !== talk) veil.push(el);
+        }
+      }
+      if (talk && state.talkCopy) {
+        for (const el of talk.children) {
+          if (el === state.talkCopy) continue;
+          const src = ((el.querySelector("img") || {}).getAttribute && el.querySelector("img").getAttribute("src")) || "";
+          if (src.includes("talk-bg") || src.includes("pin-home")) scene.push(el);
+          else veil.push(el);
+        }
+      }
+      state.talkVeil = veil;
+      state.talkScene = scene;
+      state.talkSceneBg = scene.find((el) => {
+        const img = el.querySelector("img");
+        return img && (img.getAttribute("src") || "").includes("talk-bg");
+      }) || null;
     }
     const copy = state.talkCopy;
-    if (copy) {
-      const box = copy.getBoundingClientRect();
-      let hold = false;
-      if (box.height > 1 && box.width > 1) {
-        for (const blocker of state.aliceBlockers) {
-          const other = blocker.getBoundingClientRect();
-          if (other.height < 1 || other.width < 1) continue;
-          const y = box.top < other.bottom - 0.5 && box.bottom > other.top + 0.5;
-          const x = box.left < other.right - 0.5 && box.right > other.left + 0.5;
-          if (y && x) {
-            hold = true;
-            break;
+    const aliceSpan = spans[1];
+    const aliceLocal = aliceSpan ? scroll - origin - aliceSpan.start : -1;
+    function overlaps(a, b) {
+      return a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5 && a.left < b.right - 0.5 && a.right > b.left + 0.5;
+    }
+    function veilTalk(on) {
+      const value = on ? "hidden" : "";
+      for (const el of state.talkVeil || []) put(el, "visibility", value);
+      state.talkLifted = on;
+    }
+    // Phone + geometry stay under the words. While Alice still owns the
+    // screen they are hidden until the words themselves are shown, then they
+    // paint beneath that block and keep travelling with it.
+    function placeScene(show, underCopy) {
+      for (const el of state.talkScene || []) {
+        put(el, "visibility", show ? "" : "hidden");
+        put(el, "zIndex", underCopy ? "1" : "");
+      }
+      if (state.talkSceneBg) put(state.talkSceneBg, "backgroundColor", underCopy ? "#DBDFE7" : "");
+    }
+    const inAlice = copy && aliceSpan && aliceLocal > -120 && aliceLocal < aliceSpan.total;
+    if (inAlice) {
+      const progressed = aliceSpan.content > 0 ? (aliceLocal - aliceSpan.enter) / aliceSpan.content : 1;
+      let hold = progressed < 0.5;
+      if (!hold) {
+        const titleBox = state.talkTitle ? state.talkTitle.getBoundingClientRect() : null;
+        const para = copy.querySelector("p:last-child");
+        const paraBox = para ? para.getBoundingClientRect() : null;
+        const box = titleBox && paraBox && titleBox.height > 1 && paraBox.height > 1
+          ? { top: titleBox.top, bottom: paraBox.bottom, left: Math.min(titleBox.left, paraBox.left), right: Math.max(titleBox.right, paraBox.right) }
+          : copy.getBoundingClientRect();
+        if (box.height > 1 || (box.bottom - box.top) > 1) {
+          if (state.aliceIntro) {
+            const intro = state.aliceIntro.getBoundingClientRect();
+            if (intro.height > 1 && overlaps(box, intro)) hold = true;
+          }
+          const puck = state.alicePuck;
+          if (!hold && puck) {
+            const pk = puck.getBoundingClientRect();
+            if (pk.height > 1 && pk.width > 1) {
+              const opaque = {
+                top: pk.top + pk.height * (170 / 1052),
+                bottom: pk.top + pk.height * (831 / 1052),
+                left: pk.left,
+                right: pk.right
+              };
+              if (overlaps(box, opaque)) hold = true;
+            }
           }
         }
       }
       put(copy, "visibility", hold ? "hidden" : "");
+      // Words go on the page color once Alice is about halfway down. The phone
+      // and geometry come with them, under the words. This sheet stays at the
+      // parked z-index from the stack loop (3): Alice is still the departing
+      // card (5) and paints over the fragment. It opens from under her, not
+      // on top. The plate and later sections stay down until this sheet starts.
+      let sceneOn = false;
+      if (!hold && state.talkCard) {
+        put(state.talkCard.card, "pointerEvents", "none");
+        put(copy, "zIndex", "2");
+        put(copy, "background", "#DBDFE7");
+        put(copy, "left", "0px");
+        put(copy, "width", "375px");
+        put(copy, "marginTop", "-36px");
+        put(copy, "padding", "44px 21px 12px");
+        put(copy, "boxSizing", "border-box");
+        veilTalk(true);
+        sceneOn = true;
+      } else if (state.talkLifted) {
+        if (state.talkCard) put(state.talkCard.card, "pointerEvents", "");
+        put(copy, "zIndex", "");
+        put(copy, "background", "");
+        put(copy, "left", "21px");
+        put(copy, "width", "333px");
+        put(copy, "marginTop", "");
+        put(copy, "padding", "");
+        put(copy, "boxSizing", "");
+        veilTalk(false);
+      }
+      placeScene(sceneOn, sceneOn);
+    } else if (copy) {
+      if (state.talkLifted) {
+        if (state.talkCard) put(state.talkCard.card, "pointerEvents", "");
+        put(copy, "zIndex", "");
+        put(copy, "background", "");
+        put(copy, "left", "21px");
+        put(copy, "width", "333px");
+        put(copy, "marginTop", "");
+        put(copy, "padding", "");
+        put(copy, "boxSizing", "");
+        veilTalk(false);
+      }
+      put(copy, "visibility", "");
+      placeScene(true, false);
     }
+    const deviceSlider = state.deviceSlider || (state.deviceSlider = document.querySelector("[data-device-slider]"));
+    if (deviceSlider && deviceSlider._pinDeviceRest) deviceSlider._pinDeviceRest();
+    if (initLabWheel.flush) initLabWheel.flush();
   }
 
   function requestTick() {

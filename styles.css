@@ -49,7 +49,7 @@ a { color: inherit; }
 .art {
   position: relative;
   width: 375px;
-  height: calc(20777.316px + var(--flow-shift) + var(--cards-pin));
+  height: calc(21196.316px + var(--flow-shift) + var(--cards-pin));
   overflow: hidden;
   background: #dbdfe7;
 }
@@ -1052,18 +1052,26 @@ body:has(#app[hidden]) .specs { display: none !important; }
   transform: scale(0.92);
   transition-duration: 0.1s;
 }
-/* Safari only: CTA flush to the viewport; hero mask grows by that same 8px */
+/* Safari only: CTA 8px above the viewport edge; hero mask stays 8px taller */
 @supports (hanging-punctuation: first) and (font: -apple-system-body) and (-webkit-appearance: none) {
   :root {
     --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px)));
   }
   .buy-cta-pos,
   .buy-cta {
-    bottom: 0;
+    bottom: 8px;
   }
 }
 .lab-wheel {
   transform-origin: center center;
+}
+/* Scroll rotates the plate and the tight ring, not the 1666px boxes around them. */
+.lab-fit,
+.lab-rotor {
+  transform-origin: center center;
+}
+.lab-ring {
+  pointer-events: none;
 }
 .footer-wheel {
   transform-origin: center center;
@@ -1378,7 +1386,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .memory-offer-like {
   position: absolute;
-  left: 11px;
+  left: -3.562px;
   top: 43.84px;
   z-index: 4;
   width: 44px;
@@ -1392,8 +1400,8 @@ body:has(#app[hidden]) .specs { display: none !important; }
   border-radius: 9999px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   opacity: 0;
-  /* Seat is left:11 inside the offer (33.64 from the 375 column). Park the whole control, plus 8px, behind that column's left edge. */
-  transform: translateX(calc(-1 * (33.64px + 11px + 100% + 8px)));
+  /* Same gap to the card as before the card was centered. Park the whole control, plus 8px, behind the 375 column's left edge. */
+  transform: translateX(calc(-1 * (33.64px + -3.562px + 100% + 8px)));
   pointer-events: none;
 }
 .memory-offer-like img {
@@ -1426,13 +1434,13 @@ body:has(#app[hidden]) .specs { display: none !important; }
   transition: padding 0.42s cubic-bezier(.22, .7, .3, 1), gap 0.42s cubic-bezier(.22, .7, .3, 1), border-radius 0.42s cubic-bezier(.22, .7, .3, 1), border-width 0.42s cubic-bezier(.22, .7, .3, 1);
 }
 .memory-offer-card[data-slot="0"] {
-  left: 4.922px;
+  left: -9.64px;
   top: 11.22px;
   width: 327px;
   height: 152.536px;
   z-index: 2;
 }
-.memory-offer-card[data-slot="0"] .memory-offer-rot { transform: none; }
+.memory-offer-card[data-slot="0"] .memory-offer-rot { transform: rotate(0deg); }
 .memory-offer-card[data-slot="0"] .memory-offer-face {
   gap: 7.627px;
   padding: 15.254px;
@@ -1440,13 +1448,13 @@ body:has(#app[hidden]) .specs { display: none !important; }
   border-radius: 22.88px;
 }
 .memory-offer-card[data-slot="1"] {
-  left: 16.25px;
-  top: 49.95px;
-  width: 296.49px;
-  height: 121.08px;
+  left: -9.64px;
+  top: 11.22px;
+  width: 327px;
+  height: 152.536px;
   z-index: 1;
 }
-.memory-offer-card[data-slot="1"] .memory-offer-rot { transform: none; }
+.memory-offer-card[data-slot="1"] .memory-offer-rot { transform: rotate(0deg); }
 .memory-offer-card[data-slot="1"] .memory-offer-face {
   gap: 6.873px;
   padding: 13.745px 13.745px 15.463px;
@@ -1997,7 +2005,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   object-fit: cover;
 }
 
-/* Design block (Figma 5515:245631): hero cluster, then a free horizontal angle row. No snap. */
+/* Design block (Figma 5515:245631): hero cluster, then a free horizontal angle row. Track is the 375 column, no snap. The block runs 40px past the row. */
 .design-copy {
   position: relative;
   z-index: 3;
@@ -2530,9 +2538,9 @@ body:has(#app[hidden]) .specs { display: none !important; }
   border-bottom-left-radius: 140px;
   border-bottom-right-radius: 140px;
 }
-/* «Моя память» + «Итоги дня»: дуга 140px режет телефон и текст, без пустого хвоста под ними. */
+/* «Моя память» + «Итоги дня»: 120px под телефоном итогов до дуги. Зазор над заголовком не отсюда. */
 .stack-card.is-memory .stack-content {
-  padding-bottom: 0;
+  padding-bottom: 120px;
   overflow: clip;
   clip-path: inset(0 round 0 0 140px 140px);
 }
@@ -2610,4 +2618,158 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .stack-card.is-bare.is-ended .stack-arc {
   opacity: 0;
   border: 0;
+}
+/* FAQ («Измените движение камеры»): без пустого хвоста 140px и без дуги конца этой секции. */
+.stack-card.is-flush .stack-content {
+  padding-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-flush .stack-plate {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-flush.is-ended {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-flush .stack-arc,
+.stack-card.is-flush.is-ended .stack-arc {
+  display: none;
+}
+/* «Помогает» / колесо stops square. The pin sheet covers this end, so there is no 140px arc and no stroke. 96px only clears the fixed «купить в чате». */
+.stack-card.is-dock .stack-content {
+  padding-bottom: 96px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-dock .stack-plate {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-dock.is-ended {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-dock .stack-arc,
+.stack-card.is-dock.is-ended .stack-arc {
+  display: none;
+}
+/* Alice testers: testers-badge.svg is the lilac pill with a punched circle; testers-arrow.svg sits in that circle. The disc only fills the hole with the section color. Peel uses the same Sticker-forge parameters as peel-sticker. */
+.testers-cta {
+  position: relative;
+  flex-shrink: 0;
+  width: 326px;
+  height: 57px;
+  z-index: 2;
+}
+.testers-cta.tap,
+.testers-cta.tap:hover,
+.testers-cta.tap:active {
+  transform: none;
+  transition: none;
+}
+.testers-cta-dot {
+  position: absolute;
+  z-index: 0;
+  left: 6.73047px;
+  top: 6.7334px;
+  width: 43.62203px;
+  height: 43.6221px;
+  border-radius: 50%;
+  background: #DBDFE7;
+}
+.testers-cta-badge,
+.testers-cta-arrow {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}
+.testers-cta-badge {
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 326px;
+  height: 57px;
+}
+.testers-cta-arrow {
+  z-index: 2;
+  left: 16.5415px;
+  top: 16.5445px;
+  width: 24px;
+  height: 24px;
+}
+.testers-cta-label {
+  position: absolute;
+  z-index: 3;
+  left: 100.5px;
+  top: 18.5px;
+  color: #fff;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.testers-cta.is-ready .testers-cta-dot,
+.testers-cta.is-ready .testers-cta-badge,
+.testers-cta.is-ready .testers-cta-arrow,
+.testers-cta.is-ready .testers-cta-label {
+  visibility: hidden;
+}
+/* 3× the 454×185 stage. The sticker mesh stays 454×185 and centered, so the pill does not move or scale. */
+.testers-peel {
+  position: absolute;
+  left: -518px;
+  top: -249px;
+  width: 1362px;
+  height: 555px;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 4;
+}
+.testers-cta.is-ready .testers-peel {
+  visibility: visible;
+}
+.testers-peel-target {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.testers-peel-target canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+  box-shadow: none;
+  touch-action: none;
+  pointer-events: none;
+}
+.testers-peel-hit {
+  position: absolute;
+  left: 522.7305px;
+  top: 253.7334px;
+  width: 47.622px;
+  height: 47.622px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  z-index: 2;
+  user-select: none;
+}
+.testers-peel-hit:focus {
+  outline: none;
+}
+.testers-cta.is-peeling .testers-peel-hit {
+  cursor: grabbing;
 }
