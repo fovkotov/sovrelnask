@@ -66,11 +66,6 @@ function initSignup() {
     openBtn.focus();
   }
 
-  openBtn.addEventListener("click", (event) => {
-    event.preventDefault();
-    openSignup();
-  });
-
   root.querySelector(".signup-backdrop").addEventListener("click", closeSignup);
   root.querySelector(".signup-close").addEventListener("click", closeSignup);
 
@@ -2352,7 +2347,9 @@ function initStackCards() {
     const hostTop = state.base + flowShift();
     const timeline = cursor;
     state.footer.style.top = (hostTop + timeline) + "px";
-    app.style.height = (hostTop + timeline + state.footer.offsetHeight) + "px";
+    // The footer box still ends under the specs button. Drop the spare 260px
+    // of canvas below that button; the title and the button stay inside.
+    app.style.height = (hostTop + timeline + state.footer.offsetHeight - 260) + "px";
     state.host.style.top = hostTop + "px";
     const firstEnter = spans[0] ? spans[0].enter : 0;
     return { view, spans, hostTop, timeline, origin: hostTop - firstEnter, zoom };
