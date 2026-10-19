@@ -192,8 +192,32 @@ if (cta) {
     engine.hitEdge = (local) => hitCircleInterior(engine, local);
   }
 
+  // Under 768px the stage uses CSS zoom. Pointer clientX/clientY are visual
+  // pixels, but in this browser getBoundingClientRect stays in layout pixels.
+  // Sticker-forge subtracts that rect from the pointer, so the circle — which
+  // sits on a canvas much wider than the plaque — is hundreds of pixels away
+  // from the mapped point. The first pointermove then exceeds detachThreshold
+  // and the paper flies off. When the rect already includes zoom, the spaces
+  // match and the scale stays 1.
+  function layoutPointerScale() {
+    const stage = cta.closest(".stage");
+    if (!stage) return 1;
+    const cssZoom = parseFloat(getComputedStyle(stage).zoom);
+    if (!Number.isFinite(cssZoom) || cssZoom <= 0 || Math.abs(cssZoom - 1) < 0.001) return 1;
+    const layoutW = stage.offsetWidth;
+    if (!layoutW) return cssZoom;
+    const rectScale = stage.getBoundingClientRect().width / layoutW;
+    if (Math.abs(rectScale / cssZoom - 1) < Math.abs(rectScale - 1)) return 1;
+    return cssZoom;
+  }
+
   function bindCirclePointer(engine) {
     const canvas = engine.renderer.domElement;
+    const screenToLocal = engine.screenToLocal.bind(engine);
+    engine.screenToLocal = (clientX, clientY) => {
+      const scale = layoutPointerScale();
+      return screenToLocal(clientX / scale, clientY / scale);
+    };
     canvas.style.pointerEvents = "none";
     canvas.style.width = "100%";
     canvas.style.height = "100%";

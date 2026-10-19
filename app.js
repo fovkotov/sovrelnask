@@ -1085,22 +1085,37 @@ function initMeetScrub() {
   const keyboardLip = pin && pin.querySelector(".meet-keyboard-lip");
   const stage = document.querySelector(".stage");
   const app = document.getElementById("app");
-  if (!track || !pin || !phone || !dim || !jewel || !ask || !home || !keyboard || !keyboardLip || shots.length !== 4 || caps.length !== 4 || !stage || !app) return;
+  if (!track || !pin || !phone || !dim || !jewel || !ask || !home || !keyboard || !keyboardLip || shots.length !== 7 || caps.length !== 7 || !stage || !app) return;
+  const card = pin.querySelector(".meet-new-card");
+  const feed = pin.querySelector(".meet-records-feed");
+  if (!card || !feed) return;
 
-  const baseW = 226.29;
-  const largeW = 329.3;
-  const fullScale = largeW / baseW;
-  const scales = [1, 1, fullScale, fullScale];
-  const blockDesign = 603;
-  const scrubDesign = 2000;
+  const fullScale = 329.3 / 226.29;
+  const blockDesign = 692;
+  const scrubDesign = 5600;
+  const animMs = 380;
   const askMs = 200;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const marks = [700, 1400, 2100, 2800, 3500, 4200, 4900, 5100];
+  const scenes = [
+    { shot: 0, cap: 0, scale: 1, jewel: 1, ask: 0, card: 0 },
+    { shot: 1, cap: 1, scale: 1, jewel: 1, ask: 0, card: 0 },
+    { shot: 2, cap: 2, scale: 1, jewel: 0, ask: 0, card: 0, x: -50 },
+    { shot: 2, cap: 4, scale: fullScale, jewel: 1, ask: 0, card: 0 },
+    { shot: 3, cap: 3, scale: 1, jewel: 1, ask: 0, card: 0 },
+    { shot: 5, cap: 5, scale: fullScale, jewel: 1, ask: 1, card: 0 },
+    { shot: 5, cap: 5, scale: fullScale, jewel: 1, ask: 1, card: 0 },
+    { shot: 6, cap: 6, scale: 1, jewel: 1, ask: 0, card: 0 },
+    { shot: 6, cap: 6, scale: 1, jewel: 1, ask: 0, card: 1 }
+  ];
   let frame = 0;
-  let askK = 0;
-  let askFrom = 0;
-  let askTo = 0;
-  let askStarted = 0;
-  let askPlaying = false;
+  let from = 0;
+  let to = 0;
+  let u = 1;
+  let u0 = 1;
+  let started = 0;
+  let playing = false;
+  let desired = 0;
 
   function easeAsk(t) {
     const x1 = 0.5;
@@ -1127,136 +1142,201 @@ function initMeetScrub() {
     return ((ay * u + by) * u + cy) * u;
   }
 
-  function seekAsk(now, on) {
-    const target = on ? 1 : 0;
-    if (reduce.matches) {
-      askK = target;
-      askTo = target;
-      askPlaying = false;
-      return;
-    }
-    if (!askPlaying && askK === target) return;
-    if (askTo !== target) {
-      askFrom = askK;
-      askTo = target;
-      askStarted = now;
-      askPlaying = true;
-    }
-    if (!askPlaying) return;
-    const t = Math.min(1, (now - askStarted) / askMs);
-    askK = askFrom + (askTo - askFrom) * easeAsk(t);
-    if (t >= 1) {
-      askK = askTo;
-      askPlaying = false;
-    }
-  }
-
   function zoomOf() {
     const n = parseFloat(getComputedStyle(stage).zoom);
     return Number.isFinite(n) && n > 0 ? n : 1;
   }
 
-  function segmentAt(progress) {
-    const dist = progress >= 1 ? scrubDesign : Math.min(scrubDesign, Math.max(0, progress * scrubDesign));
-    if (dist < 600) return { a: 0, b: 1, t: dist / 600 };
-    if (dist < 1000) return { a: 1, b: 1, t: 0 };
-    if (dist < 1600) return { a: 1, b: 2, t: (dist - 1000) / 600 };
-    return { a: 2, b: 2, t: 0 };
+  function sceneFor(dist) {
+    let scene = 0;
+    for (let i = 0; i < marks.length; i++) if (dist >= marks[i]) scene = i + 1;
+    return scene;
   }
 
-  function keyboardHeight() {
-    const h = keyboard.offsetHeight;
-    if (h > 0) return h;
-    const w = keyboard.offsetWidth || phone.clientWidth * 0.89151874;
-    return w * (528 / 679);
+  function duration(a, b) {
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    if (lo === 5 && hi === 6) return askMs;
+    return animMs;
   }
 
-  function hold(nodes, step, progress) {
-    const index = progress >= 1 ? step.b : step.a;
-    nodes.forEach((img, idx) => {
-      if (idx !== index) img.style.opacity = "0";
-    });
-    if (nodes[index]) nodes[index].style.opacity = "1";
+  function modeBetween(a, b) {
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    if (hi - lo !== 1) return "cut";
+    if (lo === 0) return "slide";
+    if (lo === 2) return "zoom";
+    if (lo === 5) return "ask";
+    if (lo === 6) return "down";
+    if (lo === 7) return "card";
+    return "blur";
   }
 
-  function paintShots(step, progress) {
-    const overlay = !reduce.matches && progress < 1 && step.a === 0;
-    shots[1].style.transform = "";
-    if (!overlay) {
-      dim.style.opacity = "0";
-      hold(shots, step, progress);
+  function shownIndex() {
+    if (!playing || u >= 1) return to;
+    return u > 0.5 ? to : from;
+  }
+
+  function reverse(now) {
+    const oldFrom = from;
+    const shown = u;
+    from = to;
+    to = oldFrom;
+    u0 = 1 - shown;
+    u = u0;
+    started = now;
+    playing = true;
+  }
+
+  function begin(now, target) {
+    if (playing && target === to) return;
+    if (playing && target === from) {
+      reverse(now);
       return;
     }
-    const t = step.t;
-    shots[0].style.opacity = "1";
-    shots[2].style.opacity = "0";
-    shots[3].style.opacity = "0";
-    dim.style.opacity = String(0.25 * t);
-    if (t <= 0) {
-      shots[1].style.opacity = "0";
+    const base = shownIndex();
+    if (target === base) {
+      from = to = base;
+      u = 1;
+      u0 = 1;
+      playing = false;
       return;
     }
-    shots[1].style.opacity = "1";
-    shots[1].style.transform = "translateX(" + ((1 - t) * 100) + "%)";
+    const far = Math.abs(target - base) > 1;
+    from = far ? (target > base ? target - 1 : target + 1) : base;
+    to = far ? target : (target > base ? base + 1 : base - 1);
+    u0 = 0;
+    u = 0;
+    started = now;
+    playing = from !== to;
   }
 
-  function tick() {
-    frame = 0;
-    if (app.hidden) {
-      pin.classList.remove("is-on");
+  function advance(now) {
+    if (!playing) return;
+    const p = Math.min(1, (now - started) / duration(from, to));
+    u = u0 + (1 - u0) * p;
+    if (p < 1) return;
+    u = 1;
+    from = to;
+    playing = false;
+    if (desired !== to) begin(now, desired);
+  }
+
+  function seek(now, target) {
+    desired = target;
+    if (reduce.matches) {
+      from = 0;
+      to = 0;
+      u = 1;
+      u0 = 1;
+      playing = false;
       return;
     }
-    const zoom = zoomOf();
-    const rect = track.getBoundingClientRect();
-    const blockV = blockDesign * zoom;
-    const cta = document.querySelector(".buy-cta-pos");
-    const ctaTop = cta ? cta.getBoundingClientRect().top : window.innerHeight;
-    const gap = 12 * zoom;
-    const space = Math.max(0, ctaTop - gap);
-    let pinTop = (space - blockV) / 2;
-    if (pinTop < 8 * zoom) pinTop = Math.max(0, space - blockV);
+    if (playing && target !== to) begin(now, target);
+    else if (!playing && to !== target) begin(now, target);
+    advance(now);
+  }
 
-    let top = rect.top;
-    let progress = 0;
-    const canPin = !reduce.matches && rect.height > blockV + 1;
-    if (canPin) {
-      if (rect.top > pinTop) {
-        top = rect.top;
-        progress = 0;
-      } else if (rect.bottom - blockV < pinTop) {
-        top = rect.bottom - blockV;
-        progress = 1;
-      } else {
-        top = pinTop;
-        const scrubV = scrubDesign * zoom;
-        progress = scrubV > 0 ? Math.min(1, (pinTop - rect.top) / scrubV) : 0;
+  function clearShot(el) {
+    el.style.opacity = "0";
+    el.style.filter = "none";
+    el.style.transform = "";
+    el.style.zIndex = "2";
+  }
+
+  function showShot(index, opacity, blur, shift, shade) {
+    const el = shots[index];
+    if (!el) return;
+    el.style.opacity = String(opacity);
+    const parts = [];
+    if (blur > 0.4) parts.push("blur(" + blur.toFixed(1) + "px)");
+    if (shade > 0.004) parts.push("brightness(" + (1 - shade).toFixed(3) + ")");
+    el.style.filter = parts.length ? parts.join(" ") : "none";
+    el.style.transform = shift ? "translate3d(" + shift.toFixed(2) + "%,0,0)" : "";
+  }
+
+  function dimOff() {
+    dim.style.opacity = "0";
+    dim.style.zIndex = "1";
+  }
+
+  function dimOnOutgoing(outIndex, inIndex, opacity) {
+    if (shots[outIndex]) shots[outIndex].style.zIndex = "2";
+    if (shots[inIndex] && inIndex !== outIndex) shots[inIndex].style.zIndex = "4";
+    dim.style.zIndex = "3";
+    dim.style.opacity = String(opacity);
+  }
+
+  function cardMix(a, b, eased) {
+    const ca = scenes[a].card;
+    const cb = scenes[b].card;
+    if (ca === cb) return ca;
+    return b > a ? eased : 1 - eased;
+  }
+
+  function paint(a, b, linear) {
+    const eased = a === b ? 1 : easeAsk(linear);
+    const A = scenes[a];
+    const B = scenes[b];
+    const mode = modeBetween(a, b);
+    shots.forEach(clearShot);
+    if (a === b || mode === "ask") {
+      showShot(B.shot, 1, 0, 0, 0);
+      dimOff();
+    } else if (mode === "slide") {
+      const shown = b > a ? eased : 1 - eased;
+      const lo = scenes[Math.min(a, b)].shot;
+      const hi = scenes[Math.max(a, b)].shot;
+      showShot(lo, 1, 0, 0, 0);
+      showShot(hi, 1, 0, (1 - shown) * 100, 0);
+      dimOnOutgoing(A.shot, B.shot, 0.22 * eased);
+    } else if (mode === "card") {
+      showShot(B.shot, 1, 0, 0, 0);
+      dimOff();
+    } else if (mode === "blur" || mode === "down") {
+      showShot(A.shot, 1, 16 * eased, 0, 0);
+      showShot(B.shot, eased, 0, 0, 0);
+      dimOnOutgoing(A.shot, B.shot, 0.28 * eased);
+    } else if (A.shot === B.shot) {
+      showShot(B.shot, 1, 0, 0, 0);
+      dimOff();
+    } else {
+      showShot(A.shot, 1, 0, 0, 0);
+      showShot(B.shot, eased, 0, 0, 0);
+      dimOnOutgoing(A.shot, B.shot, 0.28 * eased);
+    }
+    const quoteSwap = (A.cap === 2 && B.cap === 4) || (A.cap === 4 && B.cap === 2);
+    caps.forEach((cap, index) => {
+      let opacity;
+      if (quoteSwap && index === A.cap) opacity = eased < 0.5 ? 1 - eased / 0.5 : 0;
+      else if (quoteSwap && index === B.cap) opacity = eased < 0.5 ? 0 : (eased - 0.5) / 0.5;
+      else {
+        const oa = A.cap === index ? 1 : 0;
+        const ob = B.cap === index ? 1 : 0;
+        opacity = oa + (ob - oa) * eased;
       }
+      cap.style.opacity = String(opacity);
+    });
+    phone.style.transformOrigin = "center bottom";
+    const phoneX = (A.x || 0) + ((B.x || 0) - (A.x || 0)) * eased;
+    const rawScale = A.scale + (B.scale - A.scale) * eased;
+    const rest = pin._rest == null ? 1 : pin._rest;
+    const arrive = pin._arrive == null ? 1 : pin._arrive;
+    const settled = 1 + (rest - 1) * arrive;
+    let phoneScale = rawScale;
+    if (rawScale < fullScale - 0.0001) {
+      if (rawScale <= 1) phoneScale = settled;
+      else phoneScale = settled + (fullScale - settled) * ((rawScale - 1) / (fullScale - 1));
     }
-
-    pin.style.left = rect.left + "px";
-    pin.style.top = top + "px";
-    pin.style.transform = "scale(" + zoom + ")";
-    pin.classList.add("is-on");
-
-    const shown = reduce.matches ? 0 : progress;
-    const step = segmentAt(shown);
-    const past = shown >= 1;
-    seekAsk(performance.now(), past);
-    const stage4 = past && !askPlaying && askK >= 1;
-    paintShots(step, shown);
-    hold(caps, step, shown);
-    if (stage4) {
-      shots.forEach((img, idx) => {
-        img.style.opacity = idx === 3 ? "1" : "0";
-      });
-      shots[1].style.transform = "";
-      dim.style.opacity = "0";
-      caps.forEach((cap, idx) => {
-        cap.style.opacity = idx === 3 ? "1" : "0";
-      });
+    phone.style.transform = "translate3d(" + phoneX.toFixed(2) + "px,0,0) scale(" + phoneScale + ")";
+    if (reduce.matches) {
+      jewel.style.visibility = "hidden";
+    } else {
+      const jewelK = A.jewel + (B.jewel - A.jewel) * eased;
+      jewel.style.visibility = "";
+      jewel.style.transform = "translateX(" + (jewelK * 118) + "px)";
     }
-    const askShot = stage4 ? 3 : (shown >= 1 ? step.b : step.a);
-    const k = askK;
+    const k = A.ask + (B.ask - A.ask) * eased;
     const kbH = keyboardHeight();
     const homeH = 20.627;
     const askGap = 8;
@@ -1268,28 +1348,210 @@ function initMeetScrub() {
     ask.style.setProperty("--ask-gap", (k * askGap).toFixed(2) + "px");
     home.style.transform = "translate3d(0,0,0)";
     home.style.backgroundColor = "rgba(232, 232, 232, " + (1 - k).toFixed(3) + ")";
-    ask.style.opacity = askShot === 1 || askShot === 2 || askShot === 3 ? "1" : "0";
-    home.style.opacity = askShot === 1 || askShot === 2 || askShot === 3 ? "1" : "0";
-    const scale = scales[step.a] + (scales[step.b] - scales[step.a]) * step.t;
-    phone.style.transform = "scale(" + scale + ")";
+    const askVisible = A.shot === 5 || B.shot === 5;
+    ask.style.opacity = askVisible ? "1" : "0";
+    home.style.opacity = askVisible ? "1" : "0";
+    const cardK = cardMix(a, b, eased);
+    const cardH = card.offsetHeight || 49;
+    card.style.opacity = String(cardK);
+    card.style.transform = "translate3d(0," + ((1 - cardK) * -cardH).toFixed(2) + "px,0)";
+    card.style.filter = "none";
+    const drop = Math.max(0, card.offsetTop - feed.offsetTop);
+    const push = cardK * (cardH + drop);
+    feed.style.transform = push ? "translate3d(0," + push.toFixed(2) + "px,0)" : "";
+  }
 
-    if (reduce.matches) {
-      jewel.style.visibility = "hidden";
-    } else {
-      const dist = shown >= 1 ? scrubDesign : Math.min(scrubDesign, Math.max(0, shown * scrubDesign));
-      let off = 1;
-      if (dist < 600) off = Math.pow(1 - dist / 600, 3);
-      else if (dist < 1000) off = 0;
-      else if (dist < 1600) off = Math.pow((dist - 1000) / 600, 3);
-      jewel.style.visibility = "";
-      jewel.style.transform = "translateX(" + (off * 100) + "px)";
+  function keyboardHeight() {
+    const h = keyboard.offsetHeight;
+    if (h > 0) return h;
+    const w = keyboard.offsetWidth || phone.clientWidth * 0.89151874;
+    return w * (528 / 679);
+  }
+
+  function shiftY(el) {
+    const raw = el && el.style.transform;
+    if (!raw || raw === "none") return 0;
+    const m = /translate3d\(\s*[-0-9.]+px\s*,\s*([-0-9.]+)px/.exec(raw);
+    return m ? parseFloat(m[1]) : 0;
+  }
+
+  function layoutTop(el, stop) {
+    let y = 0;
+    let node = el;
+    while (node && node !== stop) {
+      y += node.offsetTop;
+      node = node.offsetParent;
     }
-    if (askPlaying) requestTick();
+    return y;
+  }
+
+  function parkAt(top) {
+    const card = pin._card;
+    if (!card) return;
+    if (pin.parentElement !== card) card.appendChild(pin);
+    const topPx = top + "px";
+    if (pin.style.top !== topPx) pin.style.top = topPx;
+    if (pin.style.position !== "absolute") pin.style.position = "absolute";
+    if (pin.style.left) pin.style.left = "";
+    if (pin.style.transform) pin.style.transform = "";
+    if (pin.style.zIndex !== "2") pin.style.zIndex = "2";
+    pin._parked = 1;
+  }
+
+  function unpark() {
+    if (!pin._home) return;
+    if (pin.parentElement !== pin._home) pin._home.appendChild(pin);
+    if (pin.style.top) pin.style.top = "";
+    if (pin.style.position) pin.style.position = "";
+    if (pin.style.left) pin.style.left = "";
+    if (pin.style.transform) pin.style.transform = "";
+    if (pin.style.zIndex) pin.style.zIndex = "";
+    pin._parked = 0;
+  }
+
+  // «до 32» lives at the end of this block. Once it reaches the phone, keep it
+  // just underneath so it cannot climb into the slot or sit in an empty plate.
+  function releaseHours() {
+    const hours = document.querySelector(".record-hours");
+    if (!hours || !hours._pinHold) return;
+    hours.style.transform = "";
+    hours._pinHold = 0;
+  }
+
+  function holdHours(card, cardTop, shift, pinBottom, stick) {
+    const hours = document.querySelector(".record-hours");
+    if (!hours || hours.closest(".stack-card") !== card) {
+      releaseHours();
+      return;
+    }
+    const base = cardTop + layoutTop(hours, card) + shift;
+    // 86px from the caption text: the 156px caption box has 82px empty under the copy.
+    const want = pinBottom + 4;
+    const raw = Math.round(want - base);
+    const delta = raw > 0 || stick ? raw : 0;
+    if ((hours._pinHold || 0) === delta) return;
+    hours._pinHold = delta;
+    hours.style.transform = delta ? "translate3d(0," + delta + "px,0)" : "";
+  }
+
+  function tick(again) {
+    frame = 0;
+    // The sheet writes its scroll transform in a frame queued ahead of the
+    // follow-up. Deciding here would bake that stale shift into the hold.
+    if (!again) {
+      frame = requestAnimationFrame(() => tick(true));
+      return;
+    }
+    if (!pin._home) pin._home = pin.parentElement;
+    if (app.hidden) {
+      unpark();
+      releaseHours();
+      return;
+    }
+    const card = pin._card || (pin._card = pin._home.closest(".stack-card"));
+    const content = card && card.querySelector(".stack-content");
+    const shift = content ? shiftY(content) : 0;
+    // Resting top is the phone's own slot. A parked inline top must not
+    // become the new rest, or the slot starts chasing the scroll.
+    if (pin.parentElement === pin._home && !pin.style.top) {
+      const next = Math.round(pin._home.offsetTop + pin.offsetTop);
+      if (pin._restTop == null || Math.abs(next - pin._restTop) > 1) pin._restTop = next;
+    }
+    if ((pin._trackTop == null || pin._trackTop === 0) && card) {
+      const next = Math.round(layoutTop(track, card));
+      if (next) pin._trackTop = next;
+    }
+    const rest = pin._restTop == null ? 476 : pin._restTop;
+    const zoom = zoomOf();
+    const view = window.innerHeight / zoom;
+    const phoneH = 491.984;
+    const ceiling = Math.round(Math.max(8, view - 76 - (28 + 156) - phoneH));
+    const parkTop = ceiling - 16;
+    const natural = rest + shift;
+    // Inherited visibility follows the sheet. Only the phone's own hide,
+    // while it is still under Alice, should drop the hold.
+    const hidden = pin.style.visibility === "hidden";
+    // The slot is a viewport position. After the sheet lets go it is no longer
+    // at the top of the screen, and a card-local parkTop carries the phone
+    // away while the gray plate is still up. Keep the last state in that slot
+    // until the sheet itself no longer has room for it.
+    const cardTop = card ? Math.round(card.getBoundingClientRect().top / zoom) : 0;
+    const cardH = card ? (parseFloat(card.style.height) || view) : 0;
+    const cardBottom = cardTop + cardH;
+    const cardVisible = !!(card && getComputedStyle(card).visibility !== "hidden" && cardBottom > 24 && cardTop < view);
+    let viewTop = parkTop;
+    // Keep the whole phone block inside the sheet. Once the sheet bottom
+    // climbs over the slot, pack «до 32» under the captions in what's left
+    // so the plate cannot stay up empty. While the sheet still covers the
+    // slot, the phone stays at parkTop.
+    let room = cardBottom - blockDesign;
+    const hours = card && document.querySelector(".record-hours");
+    let stickHours = false;
+    if (hours && cardBottom < view - 2 && hours.closest(".stack-card") === card) {
+      const base = cardTop + layoutTop(hours, card) + shift;
+      // 252px from the hours line (85px into the lockup) to the rounded end.
+      if (base < parkTop + blockDesign + 4) {
+        room -= 4 + 85 + 252;
+        stickHours = true;
+      }
+    }
+    if (viewTop > room) viewTop = room;
+    if (viewTop < cardTop) viewTop = cardTop;
+    const hold = !hidden && !reduce.matches && cardVisible && natural <= parkTop && viewTop + phoneH > cardTop + 8;
+    if (hold) {
+      parkAt(Math.round(viewTop - cardTop));
+      holdHours(card, cardTop, shift, viewTop + blockDesign, stickHours);
+    } else {
+      unpark();
+      releaseHours();
+    }
+    const pinRect = pin.getBoundingClientRect();
+    const alice = document.querySelector('[data-section="alice"]');
+    const plaque = alice && alice.closest(".stack-card");
+    let overlap = false;
+    if (plaque) {
+      const cs = getComputedStyle(plaque);
+      if (cs.visibility !== "hidden" && cs.display !== "none") {
+        const box = plaque.getBoundingClientRect();
+        if (box.height > 80 && box.width > 80) {
+          overlap = box.bottom > pinRect.top + 32 && box.top < pinRect.bottom - 32;
+          if (!overlap && box.bottom > pinRect.top - 8 && box.top < pinRect.bottom + 8) overlap = !!pin._under;
+        }
+      }
+    }
+    pin._under = overlap;
+    const trackCss = (pin._trackTop == null ? rest : pin._trackTop) + shift;
+    let progress = 0;
+    if (!hidden && !overlap && !reduce.matches && track.offsetHeight > blockDesign + 1) {
+      if (trackCss > parkTop) progress = 0;
+      else if (trackCss + track.offsetHeight - blockDesign < parkTop) progress = 1;
+      else progress = Math.min(1, (parkTop - trackCss) / scrubDesign);
+    }
+    const shown = reduce.matches ? 0 : progress;
+    const dist = shown >= 1 ? scrubDesign : Math.round(Math.min(scrubDesign, Math.max(0, shown * scrubDesign)));
+    // Resting size: 80 viewport px above the phone, bottom edge unmoved.
+    // Zoomed scenes keep fullScale; this only replaces the scale:1 rest.
+    const inset = phone.offsetTop > 0 && phone.offsetTop < 80 ? phone.offsetTop : 16;
+    const frameTop = 12.95;
+    const bottomVp = (parkTop + inset + phoneH) * zoom;
+    const restFit = (bottomVp - 80) / ((phoneH + frameTop) * zoom);
+    pin._rest = Math.min(1.45, Math.max(0.45, restFit));
+    const rise = natural - parkTop;
+    pin._arrive = rise <= 0 ? 1 : Math.max(0, 1 - rise / phoneH);
+    const fitKey = pin._arrive.toFixed(3) + ":" + pin._rest.toFixed(4);
+    seek(performance.now(), sceneFor(dist));
+    if (playing || !pin._painted || pin._scene !== to || pin._fitKey !== fitKey) {
+      paint(from, to, u);
+      pin._painted = playing ? 0 : 1;
+      pin._scene = playing ? -1 : to;
+      pin._fitKey = fitKey;
+    }
+    if (playing) requestTick();
   }
 
   function requestTick() {
     if (frame) return;
-    frame = requestAnimationFrame(tick);
+    frame = requestAnimationFrame(() => tick(false));
   }
 
   window.addEventListener("scroll", requestTick, { passive: true });
@@ -1335,6 +1597,67 @@ function initSecuritySlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
+  // Photo lags the disc by 20% of that card's travel from the home slot.
+  // Home is the first card's rest; a later card reaches it after scrolling `slot`.
+  const parallax = 0.2;
+  const photos = [];
+  root.querySelectorAll(".security-card").forEach((card) => {
+    const disc = card.firstElementChild;
+    if (!disc || disc.style.overflow !== "hidden") return;
+    let layer = disc.firstElementChild;
+    while (layer && layer.style.display === "contents") layer = layer.firstElementChild;
+    if (!layer) return;
+    photos.push({
+      card,
+      disc,
+      layer,
+      base: layer.style.transform,
+      slot: 0,
+      min: 0,
+      max: 0
+    });
+  });
+  let metrics = false;
+
+  function place(item, x) {
+    const shift = "translateX(" + x.toFixed(2) + "px)";
+    item.layer.style.transform = item.base ? item.base + " " + shift : shift;
+  }
+
+  function measureParallax() {
+    if (!photos.length || root.offsetWidth < 1) return;
+    const z = zoom() || 1;
+    photos.forEach((item) => place(item, 0));
+    const home = photos[0].card.offsetLeft;
+    photos.forEach((item) => {
+      const discBox = item.disc.getBoundingClientRect();
+      const photoBox = item.layer.getBoundingClientRect();
+      item.slot = item.card.offsetLeft - home;
+      item.min = -Math.max(0, (photoBox.right - discBox.right) / z - 1);
+      item.max = Math.max(0, (discBox.left - photoBox.left) / z - 1);
+    });
+    metrics = true;
+  }
+
+  function syncParallax() {
+    if (!photos.length) return;
+    if (!metrics) measureParallax();
+    const scrolled = root.scrollLeft;
+    photos.forEach((item) => {
+      let x = 0;
+      if (!reduce.matches) {
+        x = parallax * (scrolled - item.slot);
+        if (metrics) x = Math.min(item.max, Math.max(item.min, x));
+      }
+      place(item, x);
+    });
+  }
+
+  function writeScroll(value) {
+    root.scrollLeft = value;
+    syncParallax();
+  }
+
   root.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     cancelAnimationFrame(frame);
@@ -1373,7 +1696,7 @@ function initSecuritySlider() {
     }
     lastX = event.clientX;
     lastT = now;
-    root.scrollLeft = clamp(origin - dx / zoom());
+    writeScroll(clamp(origin - dx / zoom()));
   });
 
   function end(event) {
@@ -1389,7 +1712,7 @@ function initSecuritySlider() {
     const step = () => {
       v *= 0.92;
       current = clamp(current + v);
-      root.scrollLeft = current;
+      writeScroll(current);
       const hit = current <= 0 || current >= limit();
       if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
     };
@@ -1412,7 +1735,7 @@ function initSecuritySlider() {
     else if (event.deltaMode === 2) delta *= root.clientWidth;
     const next = clamp(root.scrollLeft + delta / zoom());
     if (next === root.scrollLeft) return;
-    root.scrollLeft = next;
+    writeScroll(next);
     event.preventDefault();
   }, { passive: false });
 
@@ -1420,8 +1743,24 @@ function initSecuritySlider() {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
+    writeScroll(clamp(root.scrollLeft + dir * 160));
   });
+
+  root.addEventListener("scroll", syncParallax, { passive: true });
+  window.addEventListener("resize", () => {
+    metrics = false;
+    syncParallax();
+  });
+  reduce.addEventListener("change", syncParallax);
+  const app = document.getElementById("app");
+  if (app && app.hidden) {
+    new MutationObserver(() => {
+      if (app.hidden) return;
+      metrics = false;
+      requestAnimationFrame(syncParallax);
+    }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  syncParallax();
 }
 
 function initAliceSliders() {
@@ -1924,6 +2263,19 @@ function initMemoryStack() {
   let busy = false;
   let cardWidth = 0;
   let gesture = 0;
+  let ignoreClick = false;
+  let rising = null;
+  let likeX = 0;
+  let likeA = 0;
+  let likeTargetX = 0;
+  let likeTargetA = 0;
+  let likeFollow = false;
+  let likeRaf = 0;
+  let likeLast = 0;
+  let likeReady = false;
+  const LIKE_TAU = 0.11;
+  const BACK_POSE = "translateY(11px) scale(0.94)";
+  const FRONT_POSE = "translateY(0px) scale(1)";
 
   function zoom() {
     const width = root.getBoundingClientRect().width;
@@ -1938,49 +2290,119 @@ function initMemoryStack() {
     return Array.from(root.querySelectorAll("[data-memory-card]"));
   }
 
-  function likePark() {
-    if (!like) return 0;
+  function offscreenX(card) {
+    const scene = root.closest(".memory-scene");
+    const sceneWidth = scene && scene.clientWidth ? scene.clientWidth : 375;
     const offerLeft = parseFloat(getComputedStyle(root).left) || 0;
-    const likeLeft = parseFloat(getComputedStyle(like).left) || 0;
-    const width = like.offsetWidth || 44;
+    const cardLeft = parseFloat(getComputedStyle(card).left) || 0;
+    const likeLeft = like ? (parseFloat(getComputedStyle(like).left) || 0) : cardLeft;
+    const left = offerLeft + Math.min(cardLeft, likeLeft);
+    return Math.ceil(sceneWidth - left + 48);
+  }
+
+  function parkedLike() {
+    const offerLeft = parseFloat(getComputedStyle(root).left) || 0;
+    const likeLeft = like ? (parseFloat(getComputedStyle(like).left) || 0) : 0;
+    const width = like && like.offsetWidth ? like.offsetWidth : 44;
     return -(offerLeft + likeLeft + width + 8);
+  }
+
+  function translateXOf(el) {
+    const raw = getComputedStyle(el).transform;
+    if (!raw || raw === "none") return 0;
+    const match = raw.match(/^matrix\(([^)]+)\)$/);
+    if (!match) return 0;
+    const n = parseFloat(match[1].split(",")[4]);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function stopLike(reset) {
+    if (likeRaf) cancelAnimationFrame(likeRaf);
+    likeRaf = 0;
+    likeFollow = false;
+    likeLast = 0;
+    if (!reset) return;
+    likeReady = false;
+    if (!like) return;
+    like.style.transition = "";
+    like.style.opacity = "";
+    like.style.transform = "";
+  }
+
+  function stepLike(now) {
+    likeRaf = 0;
+    if (!like) return;
+    if (!likeLast) likeLast = now;
+    const dt = Math.min(0.048, (now - likeLast) / 1000);
+    likeLast = now;
+    if (likeFollow && active) likeTargetX = translateXOf(active);
+    const k = 1 - Math.exp(-dt / LIKE_TAU);
+    likeX += (likeTargetX - likeX) * k;
+    likeA += (likeTargetA - likeA) * k;
+    like.style.opacity = String(Math.max(0, Math.min(1, likeA)));
+    like.style.transform = "translateX(" + likeX + "px)";
+    const arrived = Math.abs(likeX - likeTargetX) < 0.4 && Math.abs(likeA - likeTargetA) < 0.02;
+    if (!likeFollow && arrived) {
+      stopLike(true);
+      return;
+    }
+    likeRaf = requestAnimationFrame(stepLike);
+  }
+
+  function armLike() {
+    if (!like || reduce.matches) return;
+    if (!likeReady) {
+      likeX = parkedLike();
+      likeA = 1;
+      likeReady = true;
+      likeLast = 0;
+    }
+    like.style.transition = "none";
+    like.style.opacity = "1";
+    like.style.transform = "translateX(" + likeX + "px)";
+    if (!likeRaf) likeRaf = requestAnimationFrame(stepLike);
   }
 
   function paint(value) {
     dx = value;
     if (active) active.style.transform = "translateX(" + value + "px)";
     if (!like) return;
-    const park = likePark();
-    const travel = Math.abs(park) || 1;
-    const t = Math.max(0, Math.min(1, value / travel));
-    like.style.opacity = t > 0 ? "1" : "0";
-    like.style.transform = "translateX(" + (park * (1 - t)).toFixed(2) + "px)";
+    if (reduce.matches) {
+      like.style.opacity = "1";
+      like.style.transform = "translateX(" + value + "px)";
+      return;
+    }
+    likeFollow = true;
+    likeTargetA = 1;
+    likeTargetX = value;
+    armLike();
+  }
+
+  function clearCard(card) {
+    if (!card) return;
+    card.style.transition = "";
+    card.style.transform = "";
+    card.style.transformOrigin = "";
   }
 
   function clearMotion() {
-    if (active) {
-      active.style.transition = "";
-      active.style.transform = "";
-      active.style.transformOrigin = "";
-    }
-    if (like) {
-      like.style.transition = "";
-      like.style.opacity = "";
-      like.style.transform = "";
-    }
+    clearCard(active);
+    stopLike(true);
     active = null;
+    rising = null;
     dx = 0;
     root.classList.remove("is-dragging", "is-settling");
   }
 
-  function rotate() {
-    const list = cards();
-    if (list.length < 2) return false;
-    const next = flipRotatedSlots(list.map((card) => card.getAttribute("data-slot")));
-    list.forEach((card, index) => {
-      card.setAttribute("data-slot", String(next[index]));
-    });
-    return true;
+  function grow(node) {
+    if (!node) return;
+    node.style.transformOrigin = "center center";
+    if (reduce.matches) return;
+    node.style.transition = "none";
+    node.style.transform = BACK_POSE;
+    void node.offsetWidth;
+    node.style.transition = "transform 0.42s cubic-bezier(.22,.7,.3,1)";
+    node.style.transform = FRONT_POSE;
   }
 
   function springBack() {
@@ -1992,20 +2414,77 @@ function initMemoryStack() {
       clearMotion();
       return;
     }
+    if (likeReady) {
+      likeFollow = true;
+      likeTargetA = 0;
+      armLike();
+    }
     card.style.transition = "transform 0.32s ease";
     card.style.transform = "translateX(0px)";
-    if (like) {
-      like.style.transition = "transform 0.32s ease";
-      like.style.opacity = "1";
-      like.style.transform = "translateX(" + likePark().toFixed(2) + "px)";
-    }
     let done = false;
     const finish = () => {
       if (done) return;
       done = true;
       card.removeEventListener("transitionend", onEnd);
       if (token !== gesture) return;
-      if (active === card) clearMotion();
+      likeFollow = false;
+      likeTargetX = 0;
+      likeTargetA = 0;
+      if (active === card) {
+        clearCard(card);
+        active = null;
+        dx = 0;
+        root.classList.remove("is-dragging", "is-settling");
+      }
+    };
+    const onEnd = (event) => {
+      if (event.target !== card || event.propertyName !== "transform") return;
+      finish();
+    };
+    card.addEventListener("transitionend", onEnd);
+    window.setTimeout(finish, 420);
+  }
+
+  function flyOff(done) {
+    const card = active;
+    if (!card) return;
+    const token = gesture;
+    const dest = Math.max(dx, offscreenX(card));
+    rising = cards().find((el) => el !== card) || null;
+    if (reduce.matches) {
+      done();
+      return;
+    }
+    root.classList.remove("is-dragging");
+    if (rising) grow(rising);
+    card.style.transition = "none";
+    card.style.transform = "translateX(" + dx + "px)";
+    void card.offsetWidth;
+    if (dx < dest - 0.5) {
+      card.style.transition = "transform 0.32s ease";
+      card.style.transform = "translateX(" + dest + "px)";
+    }
+    dx = dest;
+    if (like) {
+      likeFollow = true;
+      likeTargetA = 1;
+      likeTargetX = dest;
+      armLike();
+    }
+    if (dx >= dest - 0.5 && card.style.transition === "none") {
+      done();
+      return;
+    }
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      card.removeEventListener("transitionend", onEnd);
+      if (token !== gesture || active !== card) {
+        busy = false;
+        return;
+      }
+      done();
     };
     const onEnd = (event) => {
       if (event.target !== card || event.propertyName !== "transform") return;
@@ -2017,62 +2496,77 @@ function initMemoryStack() {
 
   function commit() {
     const card = active;
-    if (!card) return;
-    const list = cards();
-    if (list.length < 2) {
+    const under = rising || cards().find((el) => el !== card);
+    if (!card || !under) {
       springBack();
       return;
     }
     busy = true;
     const token = gesture;
     root.classList.remove("is-dragging");
+    likeFollow = false;
+    likeTargetX = dx;
+    likeTargetA = 1;
     if (reduce.matches) {
-      card.style.transform = "";
-      rotate();
-      clearMotion();
+      clearCard(card);
+      clearCard(under);
+      card.setAttribute("data-slot", "1");
+      under.setAttribute("data-slot", "0");
+      stopLike(true);
+      active = null;
+      rising = null;
+      dx = 0;
       busy = false;
       return;
     }
-    const before = new Map();
-    list.forEach((el) => before.set(el, el.getBoundingClientRect()));
-    root.classList.add("is-settling");
     card.style.transition = "none";
-    card.style.transform = "";
-    if (like) {
-      like.style.transition = "transform 0.32s ease";
-      like.style.opacity = "1";
-      like.style.transform = "translateX(" + likePark().toFixed(2) + "px)";
-    }
-    rotate();
-    void root.offsetWidth;
-    const scale = zoom() || 1;
-    list.forEach((el) => {
-      const from = before.get(el);
-      const to = el.getBoundingClientRect();
-      const tx = (from.left - to.left) / scale;
-      const ty = (from.top - to.top) / scale;
-      const sx = to.width ? from.width / to.width : 1;
-      const sy = to.height ? from.height / to.height : 1;
-      el.style.transition = "none";
-      el.style.transformOrigin = "top left";
-      el.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + sx + "," + sy + ")";
-    });
-    void root.offsetWidth;
-    list.forEach((el) => {
-      el.style.transition = "transform 0.42s cubic-bezier(.22,.7,.3,1)";
-      el.style.transform = "";
-    });
-    window.setTimeout(() => {
+    card.style.transformOrigin = "center center";
+    card.style.transform = BACK_POSE;
+    card.setAttribute("data-slot", "1");
+    under.setAttribute("data-slot", "0");
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      under.removeEventListener("transitionend", onEnd);
       if (token !== gesture) return;
-      list.forEach((el) => {
-        el.style.transition = "";
-        el.style.transform = "";
-        el.style.transformOrigin = "";
-      });
-      clearMotion();
+      clearCard(card);
+      clearCard(under);
+      active = null;
+      rising = null;
+      dx = 0;
+      root.classList.remove("is-dragging", "is-settling");
       busy = false;
-    }, 460);
+    };
+    const onEnd = (event) => {
+      if (event.target !== under || event.propertyName !== "transform") return;
+      finish();
+    };
+    under.addEventListener("transitionend", onEnd);
+    window.setTimeout(finish, 480);
   }
+
+  function accept() {
+    if (busy || pointerId !== null) return;
+    const card = front();
+    if (!card || cards().length < 2) return;
+    gesture += 1;
+    active = card;
+    cardWidth = card.offsetWidth || 327;
+    busy = true;
+    flyOff(commit);
+  }
+
+  root.addEventListener("click", (event) => {
+    const button = event.target.closest(".memory-offer-accept, .memory-offer-pass");
+    if (!button || !root.contains(button)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (ignoreClick) return;
+    const top = front();
+    if (!top || !top.contains(button)) return;
+    accept();
+  });
 
   root.addEventListener("pointerdown", (event) => {
     if (busy) return;
@@ -2082,11 +2576,7 @@ function initMemoryStack() {
     gesture += 1;
     top.style.transition = "none";
     top.style.transform = "";
-    if (like) {
-      like.style.transition = "none";
-      like.style.opacity = "";
-      like.style.transform = "";
-    }
+    stopLike(true);
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
@@ -2117,7 +2607,7 @@ function initMemoryStack() {
       try { root.setPointerCapture(event.pointerId); } catch (error) {}
     }
     if (axis !== "x") return;
-    paint(Math.max(0, Math.min(cardWidth, rawX)));
+    paint(Math.max(0, Math.min(offscreenX(active), rawX)));
   });
 
   function end(event) {
@@ -2132,8 +2622,12 @@ function initMemoryStack() {
       clearMotion();
       return;
     }
-    if (width > 0 && pulled >= width * 0.4) commit();
-    else springBack();
+    ignoreClick = true;
+    window.setTimeout(() => { ignoreClick = false; }, 0);
+    if (width > 0 && pulled >= width * 0.4) {
+      busy = true;
+      flyOff(commit);
+    } else springBack();
   }
 
   root.addEventListener("pointerup", end);
@@ -2299,7 +2793,7 @@ function initStackCards() {
       card.appendChild(content);
       card.appendChild(arc);
       host.appendChild(card);
-      return { card, plate, content, arc, origin, lead, leadEl, dock, cover: plain };
+      return { card, plate, content, arc, origin, lead, leadEl, dock, memory, cover: plain || bare };
     });
     app.appendChild(host);
     footer.style.translate = "none";
@@ -2418,14 +2912,25 @@ function initStackCards() {
       const pinLocal = pinSpan ? scroll - origin - pinSpan.start : Infinity;
       const pinCover = pinSpan ? Math.min(640, pinSpan.content * 0.45) : 0;
       const pinStillOverWheel = !!(pinSpan && pinLocal < (pinSpan.enter || 0) + pinCover);
-      const holding = !!(card.dock && pinStillOverWheel && local >= span.enter + span.content);
+      // Memory stays fixed after its content. Subscription rises over it the
+      // same way Alice rises over the wheel, and memory is removed once that
+      // sheet has reached the top of the viewport.
+      const subSpan = spans[4];
+      const subLocal = subSpan ? scroll - origin - subSpan.start : Infinity;
+      const holding = !!(
+        (card.dock && pinStillOverWheel && local >= span.enter + span.content) ||
+        (card.memory && subSpan && subLocal < 0 && local >= span.enter + span.content)
+      );
       const visible = inFlow || (local >= showFrom && local < span.total) || holding;
       let F = 0;
       let O = 0;
       if (local < 0) {
         F = card.cover ? -local : (lead > 0 ? 0 : span.enter);
+        // Subscription keeps a 120px lead. Pull it up so the plaque, not the
+        // empty gap, is the edge that rises. Alice has no lead, so this is a no-op for her.
+        if (card.cover && lead > 0) O = -lead;
       } else if (local < span.enter) {
-        if (lead > 0) O = -local;
+        if (lead > 0) O = card.cover ? -lead : -local;
         else F = span.enter === 0 ? 0 : span.enter * (1 - local / span.enter);
       } else if (local < span.enter + span.content) {
         O = -(lead + (local - span.enter));
@@ -2508,7 +3013,7 @@ function initStackCards() {
         for (const el of talk.children) {
           if (el === state.talkCopy) continue;
           const src = ((el.querySelector("img") || {}).getAttribute && el.querySelector("img").getAttribute("src")) || "";
-          if (src.includes("talk-bg") || src.includes("pin-home")) scene.push(el);
+          if (el.classList.contains("talk-phone") || src.includes("talk-bg") || src.includes("pin-home") || src.includes("talk-start")) scene.push(el);
           else veil.push(el);
         }
       }

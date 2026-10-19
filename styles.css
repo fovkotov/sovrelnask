@@ -81,8 +81,7 @@ a { color: inherit; }
   --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px + 8px)));
   --hero-video-h: calc(var(--hero-h) * 578.377 / 464);
   --flow-shift: calc(var(--hero-h) - 472px);
-  /* meeting card: 600px into state 2, 400px hold, 600px scale, 400px hold on enlarged ask, then a 200ms trigger into state 4 and a 400px hold */
-  --cards-pin: 2400px;
+  --cards-pin: 6000px;
 }
 @media (max-width: 768px) {
   :root { --screen-h: calc(100svh / (100vw / 375px)); }
@@ -103,27 +102,29 @@ a { color: inherit; }
   :root { --cards-pin: 0px; }
 }
 .meet-pin {
-  position: fixed;
-  z-index: 30;
-  left: 0;
-  top: 0;
+  position: absolute;
+  z-index: 1;
+  left: -0.355px;
+  top: 356.464px;
   width: 375px;
-  height: 603px;
+  max-width: 375px;
+  min-width: 0;
+  height: 692px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   pointer-events: none;
-  visibility: hidden;
   transform-origin: top left;
 }
-.meet-pin.is-on { visibility: visible; }
 body:has(#app[hidden]) .meet-pin { display: none !important; }
 .meet-phone {
   position: relative;
   flex: none;
   width: 226.29px;
-  height: 461.46px;
+  min-width: 0;
+  height: 491.984px;
+  min-height: 0;
   transform-origin: center bottom;
 }
 .meet-shot,
@@ -136,26 +137,32 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
 }
 .meet-screen-hole {
   position: absolute;
-  left: 5.424063%;
-  top: 2.509653%;
-  width: 89.151874%;
-  height: 94.932432%;
-  border-radius: 24px;
+  left: 0;
+  top: 0;
+  width: 226px;
+  height: 491.45px;
+  border-radius: 19.285px;
   overflow: hidden;
   z-index: 1;
 }
-.meet-shot {
+.meet-screen-hole > .meet-shot {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  max-width: none;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 226px;
+  height: 491.45px;
+  max-width: 226px;
+  max-height: 491.45px;
+  min-width: 0;
+  min-height: 0;
   object-fit: cover;
-  object-position: center;
+  object-position: center top;
 }
 .meet-dim {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: #000;
   opacity: 0;
   pointer-events: none;
@@ -281,11 +288,12 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
 }
 .meet-frame {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left: -13.51px;
+  top: -12.95px;
+  width: 253.313px;
+  height: 517.884px;
   max-width: none;
-  object-fit: fill;
+  object-fit: cover;
   pointer-events: none;
   z-index: 2;
 }
@@ -316,9 +324,128 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   position: relative;
   flex: none;
   width: 333px;
-  height: 96px;
-  margin-top: 32px;
+  height: 156px;
+  margin-top: 28px;
 }
+.meet-records {
+  overflow: hidden;
+}
+.meet-records-bg,
+.meet-records-list,
+.meet-records-bar {
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}
+.meet-records-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.meet-records-feed {
+  position: absolute;
+  left: -0.5px;
+  top: 84.16px;
+  z-index: 1;
+  width: 227px;
+  height: 437px;
+}
+.meet-records-list {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+.meet-records-bar {
+  position: absolute;
+  left: 0;
+  top: 416.53px;
+  z-index: 4;
+  width: 100%;
+  height: 74.92px;
+  object-fit: fill;
+}
+.meet-new-card {
+  position: absolute;
+  left: 9.5px;
+  top: 86.66px;
+  z-index: 3;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4.83px;
+  width: 206.98px;
+  margin: 0;
+  padding: 9.655px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 14.48px;
+  box-shadow: 0 2.41px 4.83px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  pointer-events: none;
+}
+.meet-new-card-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4.83px;
+  min-width: 0;
+}
+.meet-new-card-date,
+.meet-new-card-title {
+  margin: 0;
+}
+.meet-new-card-date {
+  font-family: "YS Geo", sans-serif;
+  font-weight: 400;
+  font-size: 8.45px;
+  line-height: 11px;
+  letter-spacing: 0.084px;
+  color: rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+.meet-new-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1.2px;
+  min-width: 0;
+}
+.meet-new-card-title {
+  margin: 0;
+  font-family: "YS Geo", sans-serif;
+  font-weight: 500;
+  font-size: 10.86px;
+  line-height: 14px;
+  letter-spacing: 0.109px;
+  color: rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+.meet-new-card-rec {
+  display: block;
+  flex: none;
+  width: 9.66px;
+  height: 9.66px;
+}
+.meet-new-card-eq {
+  position: relative;
+  flex: none;
+  width: 14.48px;
+  height: 14.48px;
+  overflow: hidden;
+}
+.meet-new-card-eq span {
+  position: absolute;
+  width: 8.33%;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.9);
+}
+.meet-new-card-eq span:nth-child(1) { left: 12.5%; top: 37.5%; height: 25%; }
+.meet-new-card-eq span:nth-child(2) { left: 29.17%; top: 45.83%; height: 8.34%; }
+.meet-new-card-eq span:nth-child(3) { left: 45.83%; top: 33.33%; height: 33.34%; }
+.meet-new-card-eq span:nth-child(4) { left: 62.5%; top: 0; height: 100%; }
+.meet-new-card-eq span:nth-child(5) { left: 79.17%; top: 25%; height: 50%; }
 .meet-cap {
   position: absolute;
   left: 50%;
@@ -355,17 +482,22 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   overflow-wrap: break-word;
 }
 .meet-cap-title {
+  color: var(--type-and-icons-primary, rgba(48, 43, 49, 0.90));
+  text-align: center;
   font-family: var(--family-YS-Text-Compact, "YS Text Compact");
+  font-size: var(--font-size-body-M, 17px);
+  font-style: normal;
   font-weight: 400;
-  font-size: var(--font-size-title-S, 20px);
-  line-height: var(--line-height-title-S, 30px);
-  letter-spacing: 0;
-  color: rgba(48, 43, 49, 0.9);
+  line-height: var(--line-height-body-M, 24px);
 }
 .meet-cap-body {
-  font-size: 15px;
-  line-height: 22px;
-  color: rgba(48, 43, 49, 0.48);
+  color: var(--type-and-icons-secondary, rgba(48, 43, 49, 0.48));
+  text-align: center;
+  font-family: var(--family-YS-Text-Compact, "YS Text Compact");
+  font-size: var(--font-size-body-S, 15px);
+  font-style: normal;
+  font-weight: 400;
+  line-height: var(--line-height-body-S, 22px);
 }
 .hero-photo {
   position: absolute;
@@ -1389,9 +1521,10 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .memory-offer-like {
   position: absolute;
-  left: -3.562px;
+  /* Front card left is -9.64px. Sit the 44px circle 12px outside that edge: -9.64 - 12 - 44. */
+  left: -65.64px;
   top: 43.84px;
-  z-index: 4;
+  z-index: 2;
   width: 44px;
   height: 44px;
   box-sizing: border-box;
@@ -1403,8 +1536,8 @@ body:has(#app[hidden]) .specs { display: none !important; }
   border-radius: 9999px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   opacity: 0;
-  /* Same gap to the card as before the card was centered. Park the whole control, plus 8px, behind the 375 column's left edge. */
-  transform: translateX(calc(-1 * (33.64px + -3.562px + 100% + 8px)));
+  /* Park the whole control, plus 8px, behind the 375 column's left edge. */
+  transform: translateX(calc(-1 * (33.64px + -65.64px + 100% + 8px)));
   pointer-events: none;
 }
 .memory-offer-like img {
@@ -1415,9 +1548,14 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .memory-offer-card {
   position: absolute;
+  left: -9.64px;
+  top: 11.22px;
+  width: 327px;
+  height: 152.536px;
   box-sizing: border-box;
   margin: 0;
-  transition: left 0.42s cubic-bezier(.22, .7, .3, 1), top 0.42s cubic-bezier(.22, .7, .3, 1), width 0.42s cubic-bezier(.22, .7, .3, 1), height 0.42s cubic-bezier(.22, .7, .3, 1);
+  transform-origin: center center;
+  transition: transform 0.42s cubic-bezier(.22, .7, .3, 1);
 }
 .memory-offer-rot,
 .memory-offer-face {
@@ -1433,37 +1571,22 @@ body:has(#app[hidden]) .specs { display: none !important; }
   background: #fff;
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  transition: padding 0.42s cubic-bezier(.22, .7, .3, 1), gap 0.42s cubic-bezier(.22, .7, .3, 1), border-radius 0.42s cubic-bezier(.22, .7, .3, 1), border-width 0.42s cubic-bezier(.22, .7, .3, 1);
-}
-.memory-offer-card[data-slot="0"] {
-  left: -9.64px;
-  top: 11.22px;
-  width: 327px;
-  height: 152.536px;
-  z-index: 2;
-}
-.memory-offer-card[data-slot="0"] .memory-offer-rot { transform: rotate(0deg); }
-.memory-offer-card[data-slot="0"] .memory-offer-face {
   gap: 7.627px;
   padding: 15.254px;
   border-width: 0.953px;
   border-radius: 22.88px;
+  overflow: hidden;
 }
+.memory-offer-card[data-slot="0"] {
+  z-index: 3;
+  transform: translateY(0px) scale(1);
+}
+.memory-offer-card[data-slot="0"] .memory-offer-rot { transform: rotate(0deg); }
 .memory-offer-card[data-slot="1"] {
-  left: -9.64px;
-  top: 11.22px;
-  width: 327px;
-  height: 152.536px;
   z-index: 1;
+  transform: translateY(11px) scale(0.94);
 }
 .memory-offer-card[data-slot="1"] .memory-offer-rot { transform: rotate(0deg); }
-.memory-offer-card[data-slot="1"] .memory-offer-face {
-  gap: 6.873px;
-  padding: 13.745px 13.745px 15.463px;
-  border-width: 0.859px;
-  border-radius: 20.618px;
-}
 .memory-offer.is-dragging .memory-offer-card,
 .memory-offer.is-dragging .memory-offer-rot,
 .memory-offer.is-dragging .memory-offer-face,
@@ -1574,7 +1697,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: none;
   height: 34.321px;
   padding: 0 13.65px;
-  background: #7a55ff;
+  background: #262626;
   border-radius: 9999px;
   color: #fff;
   font-family: "YS Geo", sans-serif;
@@ -1629,9 +1752,9 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: none;
   height: 34.321px;
   padding: 0 12px;
-  background: rgba(0, 0, 0, 0.06);
+  background: #262626;
   border-radius: 9999px;
-  color: rgba(0, 0, 0, 0.9);
+  color: #fff;
   font-family: "YS Geo", sans-serif;
   font-weight: 400;
   font-size: 13.347px;
@@ -1643,50 +1766,32 @@ body:has(#app[hidden]) .specs { display: none !important; }
   width: 16px;
   height: 16px;
   flex: none;
+  filter: brightness(0) invert(1);
 }
-.memory-offer-card[data-slot="1"] .memory-offer-plan {
-  width: 13.745px;
-  height: 13.745px;
+.memory-offer-card--meet .memory-offer-face {
+  box-shadow: 0 3.814px 7.627px rgba(0, 0, 0, 0.05);
 }
-.memory-offer-card[data-slot="1"] .memory-offer-tag {
-  gap: 5.154px;
-  padding: 3.436px 6.873px 3.436px 3.436px;
-  border-radius: 10.309px;
-  font-size: 12.027px;
-  line-height: 15.463px;
-  letter-spacing: 0.1203px;
+.memory-offer-card--meet .memory-offer-name {
+  white-space: nowrap;
 }
-.memory-offer-card[data-slot="1"] .memory-offer-name {
-  padding-left: 0;
-  font-size: 13.28px;
-  line-height: 16.236px;
-  letter-spacing: 0.1328px;
+.memory-offer-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 7.627px;
+  flex: none;
 }
-.memory-offer-card[data-slot="1"] .memory-offer-row {
-  padding-left: 0;
-  gap: 6.873px;
+.memory-offer-trash {
+  width: 34.321px;
+  height: 34.321px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
 }
-.memory-offer-card[data-slot="1"] .memory-offer-when,
-.memory-offer-card[data-slot="1"] .memory-offer-note,
-.memory-offer-card[data-slot="1"] .memory-offer-accept,
-.memory-offer-card[data-slot="1"] .memory-offer-pass {
-  font-size: 12.027px;
-  line-height: 15.463px;
-  letter-spacing: 0.1203px;
-}
-.memory-offer-card[data-slot="1"] .memory-offer-when img,
-.memory-offer-card[data-slot="1"] .memory-offer-ico,
-.memory-offer-card[data-slot="1"] .memory-offer-accept img {
-  width: 13.745px;
-  height: 13.745px;
-}
-.memory-offer-card[data-slot="1"] .memory-offer-pass img {
-  width: 14px;
-  height: 14px;
-}
-.memory-offer-card[data-slot="1"] .memory-offer-accept,
-.memory-offer-card[data-slot="1"] .memory-offer-pass {
-  height: 30.927px;
+.memory-offer-trash img {
+  width: 15.254px;
+  height: 15.254px;
+  display: block;
 }
 @media (prefers-reduced-motion: reduce) {
   .memory-offer-card,
@@ -2541,11 +2646,24 @@ body:has(#app[hidden]) .specs { display: none !important; }
   border-bottom-left-radius: 140px;
   border-bottom-right-radius: 140px;
 }
-/* «Моя память» + «Итоги дня»: 120px под телефоном итогов до дуги. Зазор над заголовком не отсюда. */
+/* «Моя память» + «Итоги дня»: низ прямой, без дуги 140px. 120px под телефоном — зазор до квадратного края. Зазор над заголовком не отсюда. */
 .stack-card.is-memory .stack-content {
   padding-bottom: 120px;
   overflow: clip;
-  clip-path: inset(0 round 0 0 140px 140px);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-memory .stack-plate {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-memory.is-ended {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.stack-card.is-memory .stack-arc,
+.stack-card.is-memory.is-ended .stack-arc {
+  display: none;
 }
 /* Железо («Носи как удобно» / «Дизайн» / диски): та же дуга на конце секции, без прямоугольного хвоста. */
 .stack-card.is-hardware .stack-content {
