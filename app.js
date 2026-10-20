@@ -717,6 +717,51 @@ function initPlansSlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
+  // White card and its text lag the slot by 20% of that card's travel from home.
+  // Home is the first card's rest; a later card reaches it after scrolling `slot`.
+  const parallax = 0.2;
+  const cards = [];
+  root.querySelectorAll(".plans-card").forEach((card) => {
+    const layers = [...card.children].map((el) => ({
+      el,
+      base: el.style.transform
+    }));
+    if (!layers.length) return;
+    cards.push({ card, layers, slot: 0 });
+  });
+  let metrics = false;
+
+  function place(item, x) {
+    const shift = "translateX(" + x.toFixed(2) + "px)";
+    item.layers.forEach((layer) => {
+      layer.el.style.transform = layer.base ? layer.base + " " + shift : shift;
+    });
+  }
+
+  function measureParallax() {
+    if (!cards.length || root.offsetWidth < 1) return;
+    const home = cards[0].card.offsetLeft;
+    cards.forEach((item) => {
+      item.slot = item.card.offsetLeft - home;
+    });
+    metrics = true;
+  }
+
+  function syncParallax() {
+    if (!cards.length) return;
+    if (!metrics) measureParallax();
+    const scrolled = root.scrollLeft;
+    cards.forEach((item) => {
+      const x = reduce.matches ? 0 : parallax * (scrolled - item.slot);
+      place(item, x);
+    });
+  }
+
+  function writeScroll(value) {
+    root.scrollLeft = value;
+    syncParallax();
+  }
+
   root.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     cancelAnimationFrame(frame);
@@ -755,7 +800,7 @@ function initPlansSlider() {
     }
     lastX = event.clientX;
     lastT = now;
-    root.scrollLeft = clamp(origin - dx / zoom());
+    writeScroll(clamp(origin - dx / zoom()));
   });
 
   function end(event) {
@@ -771,7 +816,7 @@ function initPlansSlider() {
     const step = () => {
       v *= 0.92;
       current = clamp(current + v);
-      root.scrollLeft = current;
+      writeScroll(current);
       const hit = current <= 0 || current >= limit();
       if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
     };
@@ -794,7 +839,7 @@ function initPlansSlider() {
     else if (event.deltaMode === 2) delta *= root.clientWidth;
     const next = clamp(root.scrollLeft + delta / zoom());
     if (next === root.scrollLeft) return;
-    root.scrollLeft = next;
+    writeScroll(next);
     event.preventDefault();
   }, { passive: false });
 
@@ -802,8 +847,24 @@ function initPlansSlider() {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
+    writeScroll(clamp(root.scrollLeft + dir * 160));
   });
+
+  root.addEventListener("scroll", syncParallax, { passive: true });
+  window.addEventListener("resize", () => {
+    metrics = false;
+    syncParallax();
+  });
+  reduce.addEventListener("change", syncParallax);
+  const app = document.getElementById("app");
+  if (app && app.hidden) {
+    new MutationObserver(() => {
+      if (app.hidden) return;
+      metrics = false;
+      requestAnimationFrame(syncParallax);
+    }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  syncParallax();
 }
 
 initPlansSlider();
@@ -979,6 +1040,38 @@ function initMemorySlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
+  // Photo and whatever sits in the circle lag the card by 20% of its
+  // travel from the home slot. Home is the first card's rest.
+  const parallax = 0.2;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const cards = [...root.querySelectorAll(".memory-card")];
+  let slotsReady = false;
+
+  function measureSlots() {
+    if (!cards.length || root.offsetWidth < 1) return;
+    const home = cards[0].offsetLeft;
+    cards.forEach((card) => {
+      card.dataset.memorySlot = String(card.offsetLeft - home);
+    });
+    slotsReady = true;
+  }
+
+  function syncParallax() {
+    if (!cards.length) return;
+    if (!slotsReady) measureSlots();
+    const scrolled = root.scrollLeft;
+    cards.forEach((card) => {
+      const slot = slotsReady ? Number(card.dataset.memorySlot) : 0;
+      const x = !reduce.matches && slotsReady ? parallax * (scrolled - slot) : 0;
+      card.style.setProperty("--memory-shift", x.toFixed(2) + "px");
+    });
+  }
+
+  function writeScroll(value) {
+    root.scrollLeft = value;
+    syncParallax();
+  }
+
   root.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     cancelAnimationFrame(frame);
@@ -1017,7 +1110,7 @@ function initMemorySlider() {
     }
     lastX = event.clientX;
     lastT = now;
-    root.scrollLeft = clamp(origin - dx / zoom());
+    writeScroll(clamp(origin - dx / zoom()));
   });
 
   function end(event) {
@@ -1033,7 +1126,7 @@ function initMemorySlider() {
     const step = () => {
       v *= 0.92;
       current = clamp(current + v);
-      root.scrollLeft = current;
+      writeScroll(current);
       const hit = current <= 0 || current >= limit();
       if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
     };
@@ -1057,7 +1150,7 @@ function initMemorySlider() {
     cancelAnimationFrame(frame);
     const next = clamp(root.scrollLeft + delta / zoom());
     if (next === root.scrollLeft) return;
-    root.scrollLeft = next;
+    writeScroll(next);
     event.preventDefault();
   }, { passive: false });
 
@@ -1065,8 +1158,24 @@ function initMemorySlider() {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
+    writeScroll(clamp(root.scrollLeft + dir * 160));
   });
+
+  root.addEventListener("scroll", syncParallax, { passive: true });
+  window.addEventListener("resize", () => {
+    slotsReady = false;
+    syncParallax();
+  });
+  reduce.addEventListener("change", syncParallax);
+  const app = document.getElementById("app");
+  if (app && app.hidden) {
+    new MutationObserver(() => {
+      if (app.hidden) return;
+      slotsReady = false;
+      requestAnimationFrame(syncParallax);
+    }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  syncParallax();
 }
 
 initMeetScrub();
@@ -1790,6 +1899,63 @@ function initAliceSliders() {
       return Math.min(limit(), Math.max(0, value));
     }
 
+    // Photo lags the card by 20% of that card's travel from the home slot.
+    // The bubble is a sibling and stays on the card. The rounded card clips the photo.
+    const parallax = 0.2;
+    const photos = [];
+    root.querySelectorAll(".alice-card").forEach((card) => {
+      const layer = card.querySelector(":scope > img");
+      if (!layer) return;
+      photos.push({
+        card,
+        layer,
+        base: layer.style.transform,
+        slot: 0,
+        min: 0,
+        max: 0
+      });
+    });
+    let metrics = false;
+
+    function place(item, x) {
+      const shift = "translateX(" + x.toFixed(2) + "px)";
+      item.layer.style.transform = item.base ? item.base + " " + shift : shift;
+    }
+
+    function measureParallax() {
+      if (!photos.length || root.offsetWidth < 1) return;
+      const z = zoom() || 1;
+      photos.forEach((item) => place(item, 0));
+      const home = photos[0].card.offsetLeft;
+      photos.forEach((item) => {
+        const frame = item.card.getBoundingClientRect();
+        const photo = item.layer.getBoundingClientRect();
+        item.slot = item.card.offsetLeft - home;
+        item.min = -Math.max(0, (photo.right - frame.right) / z - 1);
+        item.max = Math.max(0, (frame.left - photo.left) / z - 1);
+      });
+      metrics = true;
+    }
+
+    function syncParallax() {
+      if (!photos.length) return;
+      if (!metrics) measureParallax();
+      const scrolled = root.scrollLeft;
+      photos.forEach((item) => {
+        let x = 0;
+        if (!reduce.matches) {
+          x = parallax * (scrolled - item.slot);
+          if (metrics) x = Math.min(item.max, Math.max(item.min, x));
+        }
+        place(item, x);
+      });
+    }
+
+    function writeScroll(value) {
+      root.scrollLeft = value;
+      syncParallax();
+    }
+
     root.addEventListener("pointerdown", (event) => {
       if (event.button !== undefined && event.button !== 0) return;
       cancelAnimationFrame(frame);
@@ -1828,7 +1994,7 @@ function initAliceSliders() {
       }
       lastX = event.clientX;
       lastT = now;
-      root.scrollLeft = clamp(origin - dx / zoom());
+      writeScroll(clamp(origin - dx / zoom()));
     });
 
     function end(event) {
@@ -1844,7 +2010,7 @@ function initAliceSliders() {
       const step = () => {
         v *= 0.92;
         current = clamp(current + v);
-        root.scrollLeft = current;
+        writeScroll(current);
         const hit = current <= 0 || current >= limit();
         if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
       };
@@ -1867,7 +2033,7 @@ function initAliceSliders() {
       else if (event.deltaMode === 2) delta *= root.clientWidth;
       const next = clamp(root.scrollLeft + delta / zoom());
       if (next === root.scrollLeft) return;
-      root.scrollLeft = next;
+      writeScroll(next);
       event.preventDefault();
     }, { passive: false });
 
@@ -1875,8 +2041,24 @@ function initAliceSliders() {
       if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
       event.preventDefault();
       const dir = event.key === "ArrowRight" ? 1 : -1;
-      root.scrollLeft = clamp(root.scrollLeft + dir * 160);
+      writeScroll(clamp(root.scrollLeft + dir * 160));
     });
+
+    root.addEventListener("scroll", syncParallax, { passive: true });
+    window.addEventListener("resize", () => {
+      metrics = false;
+      syncParallax();
+    });
+    reduce.addEventListener("change", syncParallax);
+    const app = document.getElementById("app");
+    if (app && app.hidden) {
+      new MutationObserver(() => {
+        if (app.hidden) return;
+        metrics = false;
+        requestAnimationFrame(syncParallax);
+      }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
+    }
+    syncParallax();
   });
 }
 
