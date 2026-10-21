@@ -13,7 +13,7 @@ const HOLE_B = 50.3555;
 const CIRCLE_CX = HOLE_L + (HOLE_R - HOLE_L) / 2;
 const CIRCLE_CY = HOLE_T + (HOLE_B - HOLE_T) / 2;
 const CIRCLE_R = (HOLE_R - HOLE_L) / 2;
-const LABEL = "испытатели Алисы";
+const LABEL = "стать испытателем";
 
 const INTERACTION_DEFAULTS = {
   peel: {

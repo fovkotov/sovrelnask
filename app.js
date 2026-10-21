@@ -8,6 +8,7 @@ function unlock() {
 function showApp() {
   document.getElementById("gate").hidden = true;
   document.getElementById("app").hidden = false;
+  document.documentElement.classList.remove("is-preview");
   requestAnimationFrame(() => initStackCards());
 }
 
@@ -717,51 +718,6 @@ function initPlansSlider() {
     return Math.min(limit(), Math.max(0, value));
   }
 
-  // White card and its text lag the slot by 20% of that card's travel from home.
-  // Home is the first card's rest; a later card reaches it after scrolling `slot`.
-  const parallax = 0.2;
-  const cards = [];
-  root.querySelectorAll(".plans-card").forEach((card) => {
-    const layers = [...card.children].map((el) => ({
-      el,
-      base: el.style.transform
-    }));
-    if (!layers.length) return;
-    cards.push({ card, layers, slot: 0 });
-  });
-  let metrics = false;
-
-  function place(item, x) {
-    const shift = "translateX(" + x.toFixed(2) + "px)";
-    item.layers.forEach((layer) => {
-      layer.el.style.transform = layer.base ? layer.base + " " + shift : shift;
-    });
-  }
-
-  function measureParallax() {
-    if (!cards.length || root.offsetWidth < 1) return;
-    const home = cards[0].card.offsetLeft;
-    cards.forEach((item) => {
-      item.slot = item.card.offsetLeft - home;
-    });
-    metrics = true;
-  }
-
-  function syncParallax() {
-    if (!cards.length) return;
-    if (!metrics) measureParallax();
-    const scrolled = root.scrollLeft;
-    cards.forEach((item) => {
-      const x = reduce.matches ? 0 : parallax * (scrolled - item.slot);
-      place(item, x);
-    });
-  }
-
-  function writeScroll(value) {
-    root.scrollLeft = value;
-    syncParallax();
-  }
-
   root.addEventListener("pointerdown", (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     cancelAnimationFrame(frame);
@@ -800,7 +756,7 @@ function initPlansSlider() {
     }
     lastX = event.clientX;
     lastT = now;
-    writeScroll(clamp(origin - dx / zoom()));
+    root.scrollLeft = clamp(origin - dx / zoom());
   });
 
   function end(event) {
@@ -816,7 +772,7 @@ function initPlansSlider() {
     const step = () => {
       v *= 0.92;
       current = clamp(current + v);
-      writeScroll(current);
+      root.scrollLeft = current;
       const hit = current <= 0 || current >= limit();
       if (Math.abs(v) > 0.35 && !hit) frame = requestAnimationFrame(step);
     };
@@ -839,7 +795,7 @@ function initPlansSlider() {
     else if (event.deltaMode === 2) delta *= root.clientWidth;
     const next = clamp(root.scrollLeft + delta / zoom());
     if (next === root.scrollLeft) return;
-    writeScroll(next);
+    root.scrollLeft = next;
     event.preventDefault();
   }, { passive: false });
 
@@ -847,24 +803,8 @@ function initPlansSlider() {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
     const dir = event.key === "ArrowRight" ? 1 : -1;
-    writeScroll(clamp(root.scrollLeft + dir * 160));
+    root.scrollLeft = clamp(root.scrollLeft + dir * 160);
   });
-
-  root.addEventListener("scroll", syncParallax, { passive: true });
-  window.addEventListener("resize", () => {
-    metrics = false;
-    syncParallax();
-  });
-  reduce.addEventListener("change", syncParallax);
-  const app = document.getElementById("app");
-  if (app && app.hidden) {
-    new MutationObserver(() => {
-      if (app.hidden) return;
-      metrics = false;
-      requestAnimationFrame(syncParallax);
-    }).observe(app, { attributes: true, attributeFilter: ["hidden"] });
-  }
-  syncParallax();
 }
 
 initPlansSlider();
@@ -1297,18 +1237,46 @@ function initMeetScrub() {
     playing = true;
   }
 
+  // Keyboard shot is on the zoomed anchor; the records shot is on the resting
+  // one. A fast scroll used to skip that beat, so scale snapped and the
+  // picture cut. Play it through, then chain whatever scene is waiting.
+  function holdDown(target) {
+    if (playing && from === 6 && to === 7 && target > 7) return true;
+    if (playing && from === 7 && to === 6 && target < 6) return true;
+    if (playing && from === 8 && to === 7 && target < 7) return true;
+    return false;
+  }
+
+  function stepDown(base, target) {
+    if ((base === 5 || base === 6) && target > 6) return [6, 7];
+    if (base === 7 && target < 7) return [7, 6];
+    if (base === 8 && target < 7) return [8, 7];
+    return null;
+  }
+
   function begin(now, target) {
     if (playing && target === to) return;
     if (playing && target === from) {
       reverse(now);
       return;
     }
+    if (holdDown(target)) return;
     const base = shownIndex();
     if (target === base) {
       from = to = base;
       u = 1;
       u0 = 1;
       playing = false;
+      return;
+    }
+    const down = stepDown(base, target);
+    if (down) {
+      from = down[0];
+      to = down[1];
+      u0 = 0;
+      u = 0;
+      started = now;
+      playing = true;
       return;
     }
     const far = Math.abs(target - base) > 1;
@@ -1402,7 +1370,13 @@ function initMeetScrub() {
     } else if (mode === "card") {
       showShot(B.shot, 1, 0, 0, 0);
       dimOff();
-    } else if (mode === "blur" || mode === "down") {
+    } else if (mode === "down") {
+      showShot(A.shot, 1 - eased, 0, 0, 0);
+      showShot(B.shot, eased, 0, 0, 0);
+      if (shots[A.shot]) shots[A.shot].style.zIndex = "2";
+      if (shots[B.shot] && B.shot !== A.shot) shots[B.shot].style.zIndex = "4";
+      dimOff();
+    } else if (mode === "blur") {
       showShot(A.shot, 1, 16 * eased, 0, 0);
       showShot(B.shot, eased, 0, 0, 0);
       dimOnOutgoing(A.shot, B.shot, 0.28 * eased);
@@ -1570,10 +1544,14 @@ function initMeetScrub() {
       const next = Math.round(layoutTop(track, card));
       if (next) pin._trackTop = next;
     }
-    const rest = pin._restTop == null ? 476 : pin._restTop;
     const zoom = zoomOf();
     const view = window.innerHeight / zoom;
     const phoneH = 491.984;
+    const inset = phone.offsetTop > 0 && phone.offsetTop < 80 ? phone.offsetTop : 16;
+    // First state, sheet still, card filling the viewport: the phone's own
+    // center sits on the screen center. Later steps still catch it at parkTop.
+    const rest = Math.round(view / 2 - inset - phoneH / 2);
+    pin._restTop = rest;
     const ceiling = Math.round(Math.max(8, view - 76 - (28 + 156) - phoneH));
     const parkTop = ceiling - 16;
     const natural = rest + shift;
@@ -1606,13 +1584,21 @@ function initMeetScrub() {
     }
     if (viewTop > room) viewTop = room;
     if (viewTop < cardTop) viewTop = cardTop;
-    const hold = !hidden && !reduce.matches && cardVisible && natural <= parkTop && viewTop + phoneH > cardTop + 8;
+    // A tall viewport can place the centered rest above the park slot.
+    // Don't pull that first frame down onto the ceiling.
+    const aboveCeiling = rest < parkTop - 1 && shift > -2;
+    const hold = !hidden && !reduce.matches && cardVisible && natural <= parkTop && viewTop + phoneH > cardTop + 8 && !aboveCeiling;
     if (hold) {
       parkAt(Math.round(viewTop - cardTop));
       holdHours(card, cardTop, shift, viewTop + blockDesign, stickHours);
     } else {
       unpark();
       releaseHours();
+      if (card && pin.parentElement === pin._home) {
+        const homeTop = Math.round(layoutTop(pin._home, card));
+        const topPx = (rest - homeTop) + "px";
+        if (pin.style.top !== topPx) pin.style.top = topPx;
+      }
     }
     const pinRect = pin.getBoundingClientRect();
     const alice = document.querySelector('[data-section="alice"]');
@@ -1640,7 +1626,6 @@ function initMeetScrub() {
     const dist = shown >= 1 ? scrubDesign : Math.round(Math.min(scrubDesign, Math.max(0, shown * scrubDesign)));
     // Resting size: 80 viewport px above the phone, bottom edge unmoved.
     // Zoomed scenes keep fullScale; this only replaces the scale:1 rest.
-    const inset = phone.offsetTop > 0 && phone.offsetTop < 80 ? phone.offsetTop : 16;
     const frameTop = 12.95;
     const bottomVp = (parkTop + inset + phoneH) * zoom;
     const restFit = (bottomVp - 80) / ((phoneH + frameTop) * zoom);
@@ -2826,6 +2811,116 @@ function initMemoryStack() {
   }, { passive: false });
 }
 
+const SMUT = [
+  ["Помогает<br>не&nbsp;потерять<br>важное", "Нескончаемые рабочие встречи и обсуждения, случайные диалоги и дружеские беседы, обещания и планы, договорённости и задачи — Яндекс Пин собирает всё происходящее вокруг тебя"],
+  ["Алиса AI<br>твой&nbsp;напарник", "Алиса AI помнит твои записи, задачи и разговоры — поэтому не нужно ничего объяснять заново, можно сразу перейти к делу."],
+  ["Оставайся в&nbsp;разговоре", "Уделяй внимание собеседникам, а не конспектированию встречи. Яндекс Пин сам зафиксирует и сохранит всё, что обсуждается"],
+  ["Всё важное — в&nbsp;Моей памяти", "С помощью функции Моя память Алиса AI в Яндекс Пине запоминает множество самых разных фактов из твоих ежедневных обсуждений и разговоров"],
+  ["Итоги дня", "В конце дня Алиса AI собирает общую картину: завершённые дела, новые задачи, обещания, важные моменты и приоритеты на завтра"],
+  ["Больше возможностей с&nbsp;подпиской", ""],
+  ["Ювелирно<br>собран", ""],
+  ["Это<br>конфиденциально", "Безопасность и конфиденциальность ИИ-пина поддерживается на нескольких уровнях"]
+];
+
+/* Композиции из макета: только выгруженные стрелка и плюс. «Ювелирно собран» — стрелка сверху и плюс снизу. «Итоги дня» — отдельный ряд плюс, стрелка, плюс. */
+const SMUT_LAYOUT = [
+  { top: "arrow", bot: "pluses-column" },
+  { top: "arrow-plus", bot: "pluses-sides" },
+  { top: "arrow", bot: "pluses-row" },
+  { top: "arrows-2", bot: "plus" },
+  null,
+  { top: "pluses-3", bot: "pluses-3" },
+  null,
+  { top: "arrows-loose", bot: "arrow" }
+];
+
+function smutIcon(kind) {
+  const img = document.createElement("img");
+  img.className = "smut-icon " + (kind === "arrow" ? "is-arrow" : "is-plus");
+  img.alt = "";
+  img.src = kind === "arrow" ? "./assets/fig/smut-icon-arrow.svg" : "./assets/fig/smut-icon-plus.svg";
+  return img;
+}
+
+function smutStack(kind, count, gap) {
+  const el = document.createElement("div");
+  el.className = "smut-cluster";
+  el.style.gap = gap + "px";
+  for (let i = 0; i < count; i++) el.appendChild(smutIcon(kind));
+  return el;
+}
+
+function smutPlusColumn() {
+  const el = document.createElement("div");
+  el.className = "smut-cluster";
+  [0, 38, 18].forEach((gap) => {
+    const img = smutIcon("plus");
+    if (gap) img.style.marginTop = gap + "px";
+    el.appendChild(img);
+  });
+  return el;
+}
+
+function smutPlusRow(count) {
+  const el = document.createElement("div");
+  el.className = "smut-cluster is-row";
+  for (let i = 0; i < count; i++) el.appendChild(smutIcon("plus"));
+  return el;
+}
+
+function fillSmutZone(zone, spec) {
+  if (spec === "arrow") zone.appendChild(smutIcon("arrow"));
+  else if (spec === "plus") zone.appendChild(smutIcon("plus"));
+  else if (spec === "arrow-plus") {
+    zone.classList.add("is-split");
+    zone.appendChild(smutIcon("arrow"));
+    zone.appendChild(smutIcon("plus"));
+  } else if (spec === "arrows-2") zone.appendChild(smutStack("arrow", 2, 33));
+  else if (spec === "arrows-loose") zone.appendChild(smutStack("arrow", 2, 67));
+  else if (spec === "pluses-3") zone.appendChild(smutStack("plus", 3, 10));
+  else if (spec === "pluses-column") zone.appendChild(smutPlusColumn());
+  else if (spec === "pluses-sides") {
+    zone.classList.add("is-low");
+    zone.appendChild(smutPlusRow(2));
+  } else if (spec === "pluses-row") {
+    zone.classList.add("is-low", "is-midlow");
+    zone.appendChild(smutPlusRow(3));
+  }
+}
+
+function hideSmutDuplicates(content) {
+  const titles = [
+    "Помогает не потерять важное",
+    "Алиса AI твой напарник",
+    "Оставайся в разговоре",
+    "Всё важное — в Моей памяти",
+    "Итоги дня",
+    "Больше возможностей с подпиской",
+    "Ювелирно собран",
+    "Это конфиденциально"
+  ];
+  const plain = (el) => {
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll("br").forEach((br) => br.replaceWith(" "));
+    return (clone.textContent || "").replace(/\u00a0/g, " ").replace(/[—–]/g, "-").replace(/\s+/g, " ").trim();
+  };
+  const known = new Set(titles.map((title) => title.replace(/[—–]/g, "-")));
+  for (const el of content.querySelectorAll("p, h1, h2, h3")) {
+    const text = plain(el);
+    if (!known.has(text)) continue;
+    el.classList.add("smut-dup");
+    let node = el;
+    let subtitle = el.nextElementSibling;
+    if (!subtitle && el.parentElement) {
+      node = el.parentElement;
+      subtitle = node.nextElementSibling;
+    }
+    if (subtitle && subtitle.tagName === "P") subtitle.classList.add("smut-dup");
+    const after = (subtitle || node).nextElementSibling;
+    if (after && /height:\s*680px/.test(after.getAttribute("style") || "")) after.classList.add("smut-dup");
+  }
+}
+
 function initStackCards() {
   const app = document.getElementById("app");
   const layer = app && app.querySelector(".layer");
@@ -2872,12 +2967,14 @@ function initStackCards() {
     if (el.querySelector(".footer-specs")) return "footer";
     if (el.dataset.section === "alice") return 1;
     if (el.dataset.section === "talk") return 2;
-    if (el.dataset.section === "memory" || el.dataset.section === "itogi") return 3;
-    if (el.classList.contains("hardware-pack")) return 5;
+    if (el.dataset.section === "memory") return 3;
+    if (el.dataset.section === "itogi") return 4;
+    if (el.dataset.section === "plans") return 5;
+    if (el.classList.contains("hardware-pack")) return 6;
     const head = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
     if (head.includes("Помогает") && head.includes("важное")) return 0;
-    if (head.includes("подпиской")) return 4;
-    if (head.includes("конфиденциально")) return 6;
+    if (head.includes("подпиской")) return 5;
+    if (head.includes("конфиденциально")) return 7;
     return null;
   }
 
@@ -2894,6 +2991,17 @@ function initStackCards() {
   }
 
   if (!initStackCards.state) {
+    const hours = document.querySelector(".record-hours");
+    const hardwareBody = document.querySelector(".hardware-pack-body");
+    const hardwareSlider = hardwareBody && hardwareBody.querySelector(".hardware-slider");
+    if (hours && hardwareSlider) {
+      hours.style.position = "relative";
+      hours.style.left = "auto";
+      hours.style.top = "auto";
+      hours.style.width = "190px";
+      hours.style.margin = "28px auto 8px";
+      hardwareSlider.before(hours);
+    }
     const heading = [...app.querySelectorAll(".talk-title")].find((el) => {
       const text = (el.textContent || "").replace(/\s+/g, " ");
       return text.includes("Помогает") && text.includes("важное");
@@ -2929,10 +3037,10 @@ function initStackCards() {
         continue;
       }
       if (typeof kind === "number") group = kind;
-      if (group >= 0 && group < 7) item.group = group;
+      if (group >= 0 && group < 8) item.group = group;
     }
 
-    const groups = [[], [], [], [], [], [], []];
+    const groups = [[], [], [], [], [], [], [], []];
     for (const item of tagged) {
       if (item.group >= 0) groups[item.group].push(item);
     }
@@ -2947,12 +3055,13 @@ function initStackCards() {
     const cards = groups.map((items, index) => {
       const card = document.createElement("div");
       const plain = index === 1;
-      const bare = index === 4;
+      const bare = index === 5;
       const memory = index === 3;
-      const hardware = index === 5;
-      const flush = index === 6;
+      const itogi = index === 4;
+      const hardware = index === 6;
+      const flush = index === 7;
       const dock = index === 0;
-      card.className = "stack-card" + (plain ? " is-plain" : "") + (bare ? " is-bare" : "") + (memory ? " is-memory" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-flush" : "") + (dock ? " is-dock" : "");
+      card.className = "stack-card is-sheet" + (plain ? " is-plain" : "") + (bare ? " is-bare" : "") + (memory ? " is-memory" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-flush" : "") + (dock ? " is-dock" : "");
       const plate = document.createElement("div");
       plate.className = "stack-plate";
       const leadEl = document.createElement("div");
@@ -2961,30 +3070,113 @@ function initStackCards() {
       content.className = "stack-content";
       const arc = document.createElement("div");
       arc.className = "stack-arc";
+      const smut = document.createElement("div");
+      const talk = index === 2;
+      smut.className = "smut" + (index === 1 ? " is-alice" : "") + (talk ? " is-talk" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "");
+      const copy = SMUT[index];
+      const layout = SMUT_LAYOUT[index];
+      const topZone = document.createElement("div");
+      topZone.className = "smut-zone is-top";
+      fillSmutZone(topZone, talk ? null : layout && layout.top);
+      const copyEl = document.createElement("div");
+      copyEl.className = "smut-copy";
+      const smutTitle = document.createElement("p");
+      smutTitle.className = "smut-title";
+      smutTitle.innerHTML = copy[0];
+      copyEl.appendChild(smutTitle);
+      if (copy[1]) {
+        const smutBody = document.createElement("p");
+        smutBody.className = "smut-body";
+        smutBody.textContent = copy[1];
+        copyEl.appendChild(smutBody);
+      }
+      const botZone = document.createElement("div");
+      botZone.className = "smut-zone is-bot";
+      fillSmutZone(botZone, talk ? null : layout && layout.bot);
+      smut.append(topZone, copyEl, botZone);
+      if (index === 1) {
+        const photo = document.createElement("img");
+        photo.className = "smut-photo";
+        photo.alt = "";
+        photo.draggable = false;
+        photo.src = "./assets/fig/product-overview.png";
+        smut.prepend(photo);
+      }
+      if (talk) {
+        const arrow = document.createElement("img");
+        arrow.className = "smut-talk-arrow";
+        arrow.alt = "";
+        arrow.width = 15;
+        arrow.height = 15;
+        arrow.src = "./assets/fig/talk-arrow.svg";
+        const plus = (side) => {
+          const img = document.createElement("img");
+          img.className = "smut-talk-plus is-" + side;
+          img.alt = "";
+          img.width = 12;
+          img.height = 12;
+          img.src = "./assets/fig/talk-plus.svg";
+          return img;
+        };
+        smut.append(arrow, plus("left"), plus("center"), plus("right"));
+      }
+      if (itogi) {
+        const marks = document.createElement("div");
+        marks.className = "smut-itogi-marks";
+        marks.append(smutIcon("plus"), smutIcon("arrow"), smutIcon("plus"));
+        smut.append(marks);
+      }
+      if (hardware) {
+        const arrow = smutIcon("arrow");
+        arrow.classList.add("smut-hw-arrow");
+        const plus = smutIcon("plus");
+        plus.classList.add("smut-hw-plus");
+        smut.append(arrow, plus);
+      }
       const origin = index === 0 && anchorY != null ? anchorY : Math.min(...items.map((item) => item.y));
       const lead = index === 0 || plain ? 0 : 120;
+      // «Помогает»: после шмуца первый блок контента на 120px. Сдвиг общий, зазоры внутри секции те же.
+      const contentTop = index === 0 ? 120 : 0;
       items.forEach((item) => {
         item.el.style.position = "absolute";
-        item.el.dataset.stackTop = String(item.y - origin);
-        item.el.style.top = (item.y - origin) + "px";
+        const top = item.y - origin + contentTop;
+        item.el.dataset.stackTop = String(top);
+        item.el.style.top = top + "px";
         item.el.style.translate = "none";
         content.appendChild(item.el);
       });
+      hideSmutDuplicates(content);
+      if (index === 1) {
+        for (const img of content.querySelectorAll('img[src*="alice-puck"]')) img.hidden = true;
+      }
       card.appendChild(plate);
       card.appendChild(leadEl);
       card.appendChild(content);
       card.appendChild(arc);
+      card.appendChild(smut);
       host.appendChild(card);
-      return { card, plate, content, arc, origin, lead, leadEl, dock, memory, cover: plain || bare };
+      return { card, plate, content, arc, smut, origin, lead, leadEl, dock, memory, cover: plain || bare };
     });
     app.appendChild(host);
+    const lastCard = cards[cards.length - 1];
+    let lastBottom = 0;
+    for (const child of lastCard.content.children) {
+      const top = parseFloat(child.dataset.stackTop) || parseFloat(child.style.top) || 0;
+      lastBottom = Math.max(lastBottom, top + child.offsetHeight);
+    }
+    footer.dataset.stackTop = String(lastBottom);
+    footer.style.position = "absolute";
+    footer.style.left = "0px";
+    footer.style.top = lastBottom + "px";
     footer.style.translate = "none";
+    lastCard.content.appendChild(footer);
 
     initStackCards.state = {
       host,
       gap,
       cards,
       footer,
+      layer,
       base: anchorY != null ? anchorY : groups[0].reduce((min, item) => Math.min(min, item.y), Infinity)
     };
   }
@@ -2993,27 +3185,28 @@ function initStackCards() {
   if (!state) return;
 
   function measure() {
+    if (state.footer && !state.footer.dataset.cropped) {
+      const kept = Math.max(0, state.footer.offsetHeight - 260);
+      state.footer.style.height = kept + "px";
+      state.footer.style.overflow = "hidden";
+      state.footer.dataset.cropped = "1";
+    }
     const zoom = zoomOf();
     const view = Math.max(1, window.innerHeight / zoom);
-    const rise = reduce.matches ? 0 : 120;
-    const exit = reduce.matches ? 0 : view;
-    const spans = state.cards.map((card, index) => {
-      const lead = reduce.matches ? 0 : (card.lead || 0);
+    const beat = view;
+    const spans = state.cards.map((card) => {
       const tail = parseFloat(getComputedStyle(card.content).paddingBottom) || 0;
       let contentH = 0;
       for (const child of card.content.children) {
         const base = parseFloat(child.dataset.stackTop);
-        const top = (Number.isFinite(base) ? base : (parseFloat(child.style.top) || 0)) + lead;
+        const top = Number.isFinite(base) ? base : (parseFloat(child.style.top) || 0);
         if (Number.isFinite(base)) child.style.top = top + "px";
         contentH = Math.max(contentH, top + child.offsetHeight);
       }
       contentH += tail;
-      card.content.classList.toggle("has-lead", lead > 0);
-      const bodyH = Math.max(0, contentH - lead);
-      const contentLen = bodyH > view ? bodyH - view : Math.min(200, view);
       card.content.style.height = contentH + "px";
-      const enter = index === 0 ? rise : lead;
-      return { enter, lead, content: contentLen, exit, total: enter + contentLen + exit, contentH };
+      const contentLen = Math.max(0, contentH - view);
+      return { smut: beat, content: contentLen, leave: beat, total: beat + contentLen + beat, contentH };
     });
     let cursor = 0;
     spans.forEach((span) => {
@@ -3022,13 +3215,15 @@ function initStackCards() {
     });
     const hostTop = state.base + flowShift();
     const timeline = cursor;
-    state.footer.style.top = (hostTop + timeline) + "px";
-    // The footer box still ends under the specs button. Drop the spare 260px
-    // of canvas below that button; the title and the button stay inside.
-    app.style.height = (hostTop + timeline + state.footer.offsetHeight - 260) + "px";
+    app.style.height = (hostTop + timeline) + "px";
     state.host.style.top = hostTop + "px";
-    const firstEnter = spans[0] ? spans[0].enter : 0;
-    return { view, spans, hostTop, timeline, origin: hostTop - firstEnter, zoom };
+    if (state.layer) {
+      state.layer.style.height = hostTop + "px";
+      state.layer.style.overflow = "hidden";
+      state.layer.style.backgroundColor = "#DBDFE7";
+      state.layer.style.zIndex = "8";
+    }
+    return { view, spans, hostTop, timeline, origin: hostTop, zoom };
   }
 
   let frame = 0;
@@ -3042,28 +3237,10 @@ function initStackCards() {
   function px(value) {
     return (Math.round(value * 100) / 100).toFixed(2);
   }
-  // Bottom cap of the subscription blob (plans-blob.png rotated into a 375-wide stadium).
-  const purpleCap = 187.5;
-  function sheetTop(span, stuck, inFlow, F, hostTop, scroll, firstEnter) {
-    if (inFlow) return hostTop - scroll;
-    if (stuck) return F;
-    return hostTop + (span.start + span.enter + span.content - firstEnter) - scroll;
-  }
-  function purpleClip(tip, view) {
-    const y0 = tip - purpleCap;
-    if (y0 >= view) return "inset(100%)";
-    if (tip <= 0.5) return "none";
-    const steps = 32;
-    const parts = [];
-    for (let i = 0; i <= steps; i++) {
-      const theta = Math.PI * (1 - i / steps);
-      const x = purpleCap + purpleCap * Math.cos(theta);
-      const y = y0 + purpleCap * Math.sin(theta);
-      parts.push(px(x) + "px " + px(y) + "px");
-    }
-    parts.push(px(375) + "px " + px(view) + "px");
-    parts.push("0px " + px(view) + "px");
-    return "polygon(" + parts.join(", ") + ")";
+  function roundBottom(el, radius) {
+    const v = !radius || radius < 0.5 ? "0px" : px(radius) + "px";
+    put(el, "borderBottomLeftRadius", v);
+    put(el, "borderBottomRightRadius", v);
   }
   function apply() {
     frame = 0;
@@ -3072,97 +3249,72 @@ function initStackCards() {
     const scroller = document.scrollingElement || document.documentElement;
     const scroll = (window.scrollY || scroller.scrollTop || 0) / metrics.zoom;
     const { view, spans, hostTop, origin } = metrics;
-    const firstEnter = hostTop - origin;
-    let purpleScreenTip = null;
+    const s = scroll - hostTop;
+    const morph = !reduce.matches;
+    if (state.layer) {
+      const introBottom = -s;
+      let introR = 0;
+      if (morph && introBottom < view && introBottom > 0) introR = 120 * (1 - introBottom / view);
+      roundBottom(state.layer, introR);
+    }
     state.cards.forEach((card, index) => {
       const span = spans[index];
-      const local = scroll - origin - span.start;
-      const prev = index > 0 ? spans[index - 1] : null;
-      // Next sheet is already parked under the current one for the whole
-      // content phase, not only during exit. Turning it on at exit is the pop.
-      // The pin sheet is the exception: it stays hidden until the wheel has
-      // finished, then rises over that stopped sheet instead of waiting under it.
-      const showFrom = prev ? (card.cover ? -prev.exit : -(prev.content + prev.exit)) : 0;
-      const lead = span.lead || 0;
-      // First cluster is already in the page. Pin starts when its top arrives;
-      // visibility must not flip on that frame.
-      const inFlow = index === 0 && local < span.enter;
-      // Wheel stays put after its own content, under the rising pin sheet,
-      // until Alice's field has covered the viewport. Release before halfway
-      // so «Оставайся» can still show through Alice, under her, not under the wheel.
-      const pinSpan = spans[1];
-      const pinLocal = pinSpan ? scroll - origin - pinSpan.start : Infinity;
-      const pinCover = pinSpan ? Math.min(640, pinSpan.content * 0.45) : 0;
-      const pinStillOverWheel = !!(pinSpan && pinLocal < (pinSpan.enter || 0) + pinCover);
-      // Memory stays fixed after its content. Subscription rises over it the
-      // same way Alice rises over the wheel, and memory is removed once that
-      // sheet has reached the top of the viewport.
-      const subSpan = spans[4];
-      const subLocal = subSpan ? scroll - origin - subSpan.start : Infinity;
-      const holding = !!(
-        (card.dock && pinStillOverWheel && local >= span.enter + span.content) ||
-        (card.memory && subSpan && subLocal < 0 && local >= span.enter + span.content)
-      );
-      const visible = inFlow || (local >= showFrom && local < span.total) || holding;
-      let F = 0;
-      let O = 0;
-      if (local < 0) {
-        F = card.cover ? -local : (lead > 0 ? 0 : span.enter);
-        // Subscription keeps a 120px lead. Pull it up so the plaque, not the
-        // empty gap, is the edge that rises. Alice has no lead, so this is a no-op for her.
-        if (card.cover && lead > 0) O = -lead;
-      } else if (local < span.enter) {
-        if (lead > 0) O = card.cover ? -lead : -local;
-        else F = span.enter === 0 ? 0 : span.enter * (1 - local / span.enter);
-      } else if (local < span.enter + span.content) {
-        O = -(lead + (local - span.enter));
-      } else if (holding) {
-        F = 0;
-        O = -(lead + span.content);
-      } else {
-        F = -(local - span.enter - span.content);
-        O = -(lead + span.content);
+      const t = s - span.start;
+      // Next шмут is already fixed for the whole previous content phase.
+      // Turning it on only at the exit is the pop.
+      let mode = "off";
+      if (index === 0 && t < 0 && s >= -view) mode = "hold";
+      if (index > 0) {
+        const prev = spans[index - 1];
+        const prevT = s - prev.start;
+        if (prevT >= prev.smut && prevT < prev.total) mode = "hold";
       }
-      const stuck = visible && !inFlow && (local < span.enter + span.content || holding);
-      card.card.classList.toggle("is-pinned", stuck);
-      card.card.classList.toggle("is-live", inFlow || (visible && local >= 0 && local < span.enter + span.content));
-      put(card.card, "visibility", visible ? "visible" : "hidden");
+      if (t >= 0 && t < span.smut) mode = "exit";
+      else if (t >= span.smut && t < span.smut + span.content) mode = "scroll";
+      else if (t >= span.smut + span.content && t < span.total) mode = "leave";
+      const on = mode !== "off";
+      card.card.classList.toggle("is-pinned", on);
+      card.card.classList.toggle("is-live", mode === "scroll" || mode === "leave");
+      put(card.card, "visibility", on ? "visible" : "hidden");
       put(card.card, "height", px(view) + "px");
-      let z = local >= 0 ? "5" : "3";
-      if (holding) z = "4";
-      if (card.cover && visible && local < span.enter + span.content) z = "6";
+      put(card.smut, "height", px(view) + "px");
+      let z = "4";
+      if (mode === "exit" || mode === "scroll") z = "5";
+      if (mode === "leave") z = "6";
       put(card.card, "zIndex", z);
-      let shiftText;
-      if (!visible) shiftText = "translate3d(0,-20000px,0)";
-      else if (inFlow) shiftText = "none";
-      else if (stuck) shiftText = Math.abs(F) < 0.005 ? "none" : "translate3d(0," + px(F) + "px,0)";
-      else shiftText = "translate3d(0," + px(span.start + span.enter + span.content - firstEnter) + "px,0)";
-      put(card.card, "transform", shiftText);
-      const contentShift = Math.abs(O) < 0.005 ? "none" : "translate3d(0," + px(O) + "px,0)";
+      let cardShift = "translate3d(0,-20000px,0)";
+      let contentShift = "none";
+      let smutShift = "none";
+      let cardR = 0;
+      let smutR = 0;
+      let smutOn = false;
+      if (mode === "hold") {
+        cardShift = "none";
+        smutOn = true;
+      } else if (mode === "exit") {
+        cardShift = "none";
+        smutOn = true;
+        const p = span.smut ? t / span.smut : 1;
+        smutShift = Math.abs(t) < 0.005 ? "none" : "translate3d(0," + px(-t) + "px,0)";
+        smutR = 120 * p;
+      } else if (mode === "scroll") {
+        cardShift = "none";
+        const y = t - span.smut;
+        contentShift = Math.abs(y) < 0.005 ? "none" : "translate3d(0," + px(-y) + "px,0)";
+      } else if (mode === "leave") {
+        const gone = t - span.smut - span.content;
+        const p = span.leave ? gone / span.leave : 1;
+        cardShift = Math.abs(gone) < 0.005 ? "none" : "translate3d(0," + px(-gone) + "px,0)";
+        contentShift = Math.abs(span.content) < 0.005 ? "none" : "translate3d(0," + px(-span.content) + "px,0)";
+        cardR = 120 * p;
+      }
+      put(card.card, "transform", on ? cardShift : "translate3d(0,-20000px,0)");
       put(card.content, "transform", contentShift);
-      if (card.plate) {
-        put(card.plate, "height", px(span.contentH) + "px");
-        put(card.plate, "transform", contentShift);
-      }
-      if (card.leadEl) put(card.leadEl, "height", px(Math.max(0, lead + O)) + "px");
-      const endY = span.contentH + O;
-      card.card.classList.toggle("is-ended", visible && endY <= view + 1 && endY >= view - 1.5);
-      if (card.arc) {
-        put(card.arc, "top", px(Math.max(0, span.contentH - 140)) + "px");
-        put(card.arc, "transform", contentShift);
-      }
-      const topNow = visible ? sheetTop(span, stuck, inFlow, F, hostTop, scroll, firstEnter) : null;
-      if (card.card.classList.contains("is-bare")) {
-        purpleScreenTip = topNow == null ? null : topNow + endY;
-      }
-      const prevEl = index > 0 ? state.cards[index - 1].card : null;
-      if (prevEl && prevEl.classList.contains("is-bare")) {
-        const clip = visible && topNow != null && purpleScreenTip != null
-          ? purpleClip(purpleScreenTip - topNow, view)
-          : "none";
-        put(card.card, "clipPath", clip);
-        card.card.classList.toggle("is-arc-clip", clip.indexOf("polygon") === 0);
-      }
+      put(card.smut, "visibility", smutOn ? "visible" : "hidden");
+      put(card.smut, "transform", smutOn ? smutShift : "translate3d(0,-20000px,0)");
+      roundBottom(card.card, morph ? cardR : 0);
+      roundBottom(card.smut, morph ? smutR : 0);
+      put(card.card, "clipPath", "none");
     });
     put(state.gap, "display", "none");
     // «Оставайся» is parked under Alice. The purple field and the puck box
@@ -3227,7 +3379,7 @@ function initStackCards() {
       }
       if (state.talkSceneBg) put(state.talkSceneBg, "backgroundColor", underCopy ? "#DBDFE7" : "");
     }
-    const inAlice = copy && aliceSpan && aliceLocal > -120 && aliceLocal < aliceSpan.total;
+    const inAlice = false;
     if (inAlice) {
       const progressed = aliceSpan.content > 0 ? (aliceLocal - aliceSpan.enter) / aliceSpan.content : 1;
       let hold = progressed < 0.5;
@@ -3333,4 +3485,112 @@ function initStackCards() {
   window.dispatchEvent(new Event("scroll"));
 }
 
+function initPreview() {
+  if (initPreview.done) return;
+  const preview = document.getElementById("preview");
+  const sheet = document.getElementById("preview-sheet");
+  const app = document.getElementById("app");
+  if (!preview || !sheet) return;
+  initPreview.done = true;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let peeled = false;
+  let released = false;
+  preview.classList.add("is-sealed");
+
+  function maxScroll() {
+    return Math.max(1, preview.clientHeight);
+  }
+
+  function setPeeled(on) {
+    if (on === peeled) return;
+    peeled = on;
+    preview.classList.toggle("is-open", on);
+    document.documentElement.classList.toggle("is-preview", !on);
+    if (app && !app.hidden) app.inert = !on;
+    preview.setAttribute("aria-hidden", on ? "true" : "false");
+    if (!on) window.scrollTo(0, 0);
+  }
+
+  function apply() {
+    const max = maxScroll();
+    const y = preview.scrollTop;
+    const p = Math.min(1, Math.max(0, y / max));
+    const radius = !reduce.matches && p > 0 ? 120 * p : 0;
+    const value = radius < 0.5 ? "0px" : radius.toFixed(2) + "px";
+    sheet.style.borderBottomLeftRadius = value;
+    sheet.style.borderBottomRightRadius = value;
+    setPeeled(y >= max - 1);
+  }
+
+  window.pinPreviewOpen = () => {
+    if (preview.hidden || released) return;
+    released = true;
+    const max = maxScroll();
+    const start = performance.now();
+    const duration = 720;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      preview.scrollTop = max * eased;
+      if (t < 1) requestAnimationFrame(step);
+      else apply();
+    };
+    requestAnimationFrame(step);
+  };
+
+  preview.addEventListener("scroll", () => {
+    if (!released) {
+      if (preview.scrollTop !== 0) preview.scrollTop = 0;
+      return;
+    }
+    apply();
+  }, { passive: true });
+  window.addEventListener("resize", apply);
+  window.addEventListener("wheel", (event) => {
+    if (preview.hidden || released) return;
+    if (preview.contains(event.target)) event.preventDefault();
+  }, { passive: false });
+  window.addEventListener("touchmove", (event) => {
+    if (preview.hidden || released) return;
+    if (preview.contains(event.target)) event.preventDefault();
+  }, { passive: false });
+  if (!preview.hidden && app && !app.hidden) app.inert = true;
+  apply();
+}
+
+function initHeroVideo() {
+  const photo = document.querySelector(".hero-photo");
+  const video = photo && photo.querySelector("video");
+  if (!video) return;
+  video.loop = false;
+  video.muted = true;
+  let away = true;
+  const restart = () => {
+    const go = () => {
+      try { video.currentTime = 0; } catch (e) {}
+      const pending = video.play();
+      if (pending && pending.catch) pending.catch(() => {});
+    };
+    if (video.readyState >= 1) go();
+    else video.addEventListener("loadedmetadata", go, { once: true });
+  };
+  const watch = () => {
+    const box = photo.getBoundingClientRect();
+    const onScreen = box.top < 80 && box.bottom > window.innerHeight * 0.35;
+    if (onScreen) {
+      if (!away) return;
+      away = false;
+      restart();
+      return;
+    }
+    if (away) return;
+    away = true;
+    video.pause();
+  };
+  window.addEventListener("scroll", watch, { passive: true });
+  window.addEventListener("resize", watch);
+  watch();
+}
+
+initHeroVideo();
 initStackCards();

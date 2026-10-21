@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="17" height="512" viewBox="0 0 17 512" fill="none">
+  <g fill="#fff" fill-opacity="0.72">
+    <path d="M8 8v8M4 12h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 56v8M4 60h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 104v8M4 108h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 152v8M4 156h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 200v8M4 204h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 248v8M4 252h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 296v8M4 300h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 344v8M4 348h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 392v8M4 396h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 440v8M4 444h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+    <path d="M8 488v8M4 492h8" stroke="#fff" stroke-opacity="0.72" stroke-width="1.2"/>
+  </g>
+</svg>
