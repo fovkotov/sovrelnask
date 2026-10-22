@@ -118,6 +118,23 @@ a { color: inherit; }
   pointer-events: none;
   transform-origin: top left;
 }
+.talk-bg {
+  position: absolute;
+  left: 0;
+  width: 375px;
+  height: 380px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.talk-bg img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 375px;
+  height: auto;
+  max-width: none;
+}
 body:has(#app[hidden]) .meet-pin { display: none !important; }
 .meet-phone {
   position: relative;
@@ -416,7 +433,7 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
 .meet-new-card-title {
   margin: 0;
   font-family: "YS Geo", sans-serif;
-  font-weight: 500;
+  font-weight: 700;
   font-size: 10.86px;
   line-height: 14px;
   letter-spacing: 0.109px;
@@ -476,6 +493,10 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
+}
+.meet-cap-word {
+  display: inline-block;
+  will-change: transform, opacity;
 }
 .meet-cap-title,
 .meet-cap-body {
@@ -916,15 +937,17 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: none;
   width: 375px;
   height: 100dvh;
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
   background: #302b31;
   color: #fff;
   display: flex;
   flex-direction: column;
 }
 .terms-tabs {
+  position: relative;
   flex: none;
-  overflow: hidden;
+  overflow: visible;
   padding-top: 24px;
 }
 .terms-tabs-track {
@@ -955,11 +978,10 @@ body:has(#app[hidden]) .specs { display: none !important; }
   color: rgba(48, 43, 49, 0.9);
 }
 .terms-panels {
-  flex: 1 1 auto;
+  flex: none;
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: 24px 24px 88px;
+  overflow: visible;
+  padding: 24px 24px 160px;
   scrollbar-width: none;
 }
 .terms-panels::-webkit-scrollbar { display: none; }
@@ -1216,6 +1238,10 @@ body:has(#app[hidden]) .specs { display: none !important; }
   transform-origin: center center;
   transform: rotate(-60deg);
 }
+.footer-wheel img {
+  object-fit: contain;
+  object-position: center;
+}
 @media (prefers-reduced-motion: reduce) {
   .footer-wheel { transform: none; }
 }
@@ -1458,6 +1484,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: auto;
 }
 .plans-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .plans-slider.is-dragging { cursor: grabbing; }
@@ -2030,6 +2057,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   font-size: 15px;
   line-height: 22px;
   color: rgba(48, 43, 49, 0.9);
+  text-align: center;
 }
 .memory-slider img {
   -webkit-user-drag: none;
@@ -2086,6 +2114,23 @@ body:has(#app[hidden]) .specs { display: none !important; }
   max-width: none;
   object-fit: cover;
   transform: rotate(66.16deg);
+}
+.hardware-shot video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  background: transparent;
+}
+.comfort-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
 }
 .hardware-slider {
   flex: 0 0 auto;
@@ -2267,6 +2312,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .security-slider {
   position: relative;
   flex: 0 0 auto;
+  height: fit-content;
   width: 375px;
   min-width: 0;
   max-width: 375px;
@@ -2292,6 +2338,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .security-track {
   display: flex;
   align-items: flex-start;
+  height: fit-content;
   gap: 4px;
   width: max-content;
   padding-left: 24px;
@@ -2299,6 +2346,8 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .security-card {
   flex: 0 0 320px;
+  align-self: flex-start;
+  height: fit-content;
   width: 320px;
 }
 .security-slider img {
@@ -2307,10 +2356,19 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 /* Muted-mic icon: inline SVG centered in the 126px circle. Circle size stays on the inline box. */
 .security-mute {
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(72, 70, 74, 0.42);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.security-mute img {
+  opacity: 0;
 }
 .security-mute svg {
   position: relative;
@@ -2449,14 +2507,15 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .faq-title {
   width: 327px;
-  font-family: var(--family-YS-Compressed, "YS Compressed");
-  font-weight: 700;
-  font-size: var(--font-size-title-L, 45px);
-  line-height: var(--line-height-title-L, 42px);
-  letter-spacing: 0;
-  text-align: center;
   color: rgba(48, 43, 49, 0.9);
+  text-align: center;
   font-feature-settings: "ss01" 1;
+  font-family: "YS Compressed", var(--family-YS-Compressed, "YS Text"), sans-serif;
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 32px;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 .faq-cards {
@@ -2891,9 +2950,12 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex-direction: column;
   align-items: center;
   gap: 28px;
-  width: 100%;
+  width: 300px;
   position: relative;
   z-index: 1;
+}
+.smut.is-private .smut-copy {
+  width: 100%;
 }
 .smut-zone {
   flex: 1 1 0;
@@ -2956,15 +3018,21 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .smut.is-alice .smut-zone.is-bot {
   flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  container-type: size;
+  overflow: visible;
 }
-/* Девайс ниже текста: верх шайбы под абзацем, низ уходит за скругление листа. */
+/* Девайс на всю колонку 375, целиком в зоне под текстом: бока не режутся паддингом. */
 .smut.is-alice .smut-photo {
   position: absolute;
-  left: 0;
-  top: 21%;
+  left: 50%;
+  top: 0;
   z-index: 0;
-  width: 100%;
+  width: 375px;
   height: auto;
+  max-width: none;
+  transform: translate(-50%, calc(-100% * 680 / 4207));
   pointer-events: none;
 }
 .smut.is-alice .smut-zone,

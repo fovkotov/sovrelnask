@@ -1,5 +1,5 @@
 const GATE_KEY = "pin-landing-unlocked";
-const PASS = "8R+qfJt9m#i6#a-Xb0Q&_+#-0xUC%dbl";
+const PASS = "pinpinpin";
 
 function unlock() {
   sessionStorage.setItem(GATE_KEY, "1");
@@ -89,7 +89,7 @@ function initTerms() {
 
   const tabs = [...sheet.querySelectorAll(".terms-tab")];
   const panels = [...sheet.querySelectorAll(".terms-panel")];
-  const scroller = sheet.querySelector(".terms-panels");
+  const scroller = sheet;
 
   function syncScroll() {
     const signup = document.getElementById("signup");
@@ -1351,6 +1351,118 @@ function initMeetScrub() {
     return b > a ? eased : 1 - eased;
   }
 
+  let capShown = 0;
+  let capWant = 0;
+  let capBusy = false;
+  const capExitMs = 111;
+  const capExitStagger = 9;
+  const capEnterMs = 155;
+  const capEnterStagger = 15;
+  const capEaseOut = "cubic-bezier(0.7, 0, 0.84, 0)";
+  const capEaseIn = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+  function capWords(cap) {
+    if (cap._words) return cap._words;
+    const words = [];
+    for (const node of cap.querySelectorAll(".meet-cap-title, .meet-cap-body")) {
+      const parts = node.textContent.split(/(\u0020+)/);
+      node.textContent = "";
+      for (const part of parts) {
+        if (!part) continue;
+        if (part.trim() === "") {
+          node.appendChild(document.createTextNode(part));
+          continue;
+        }
+        const span = document.createElement("span");
+        span.className = "meet-cap-word";
+        span.textContent = part;
+        node.appendChild(span);
+        words.push(span);
+      }
+    }
+    cap._words = words;
+    return words;
+  }
+
+  function hideCap(cap) {
+    cap.style.opacity = "0";
+  }
+
+  function showCapStill(cap) {
+    cap.style.opacity = "1";
+    for (const word of capWords(cap)) {
+      word.getAnimations().forEach((anim) => anim.cancel());
+      word.style.opacity = "1";
+      word.style.transform = "translateY(0px)";
+    }
+  }
+
+  function playWords(words, frames, duration, stagger, easing) {
+    words.forEach((word, index) => {
+      word.getAnimations().forEach((anim) => anim.cancel());
+      word.animate(frames, { duration, delay: index * stagger, easing, fill: "forwards" });
+    });
+  }
+
+  function runCap() {
+    if (capWant === capShown) {
+      capBusy = false;
+      return;
+    }
+    const leave = caps[capShown];
+    const next = capWant;
+    capBusy = true;
+    caps.forEach((cap, index) => {
+      if (index !== capShown) hideCap(cap);
+    });
+    if (reduce.matches || !leave) {
+      caps.forEach(hideCap);
+      showCapStill(caps[next]);
+      capShown = next;
+      capBusy = false;
+      if (capWant !== capShown) runCap();
+      return;
+    }
+    const oldWords = capWords(leave);
+    const exitTotal = Math.max(0, oldWords.length - 1) * capExitStagger + capExitMs;
+    leave.style.opacity = "1";
+    playWords(oldWords, [
+      { opacity: 1, transform: "translateY(0px)" },
+      { opacity: 0, transform: "translateY(-6px)" }
+    ], capExitMs, capExitStagger, capEaseOut);
+    window.setTimeout(() => {
+      if (caps[capShown] !== leave) return;
+      hideCap(leave);
+      const enter = caps[capWant];
+      capShown = capWant;
+      if (!enter) {
+        capBusy = false;
+        return;
+      }
+      enter.style.opacity = "1";
+      const fresh = capWords(enter);
+      fresh.forEach((word) => {
+        word.style.opacity = "0";
+        word.style.transform = "translateY(8px)";
+      });
+      playWords(fresh, [
+        { opacity: 0, transform: "translateY(8px)" },
+        { opacity: 1, transform: "translateY(0px)" }
+      ], capEnterMs, capEnterStagger, capEaseIn);
+      const enterTotal = Math.max(0, fresh.length - 1) * capEnterStagger + capEnterMs;
+      window.setTimeout(() => {
+        capBusy = false;
+        if (capWant !== capShown) runCap();
+      }, enterTotal);
+    }, exitTotal);
+  }
+
+  function queueCap(next) {
+    if (next == null || next === capWant) return;
+    capWant = next;
+    if (!capBusy) runCap();
+  }
+
   function paint(a, b, linear) {
     const eased = a === b ? 1 : easeAsk(linear);
     const A = scenes[a];
@@ -1388,18 +1500,7 @@ function initMeetScrub() {
       showShot(B.shot, eased, 0, 0, 0);
       dimOnOutgoing(A.shot, B.shot, 0.28 * eased);
     }
-    const quoteSwap = (A.cap === 2 && B.cap === 4) || (A.cap === 4 && B.cap === 2);
-    caps.forEach((cap, index) => {
-      let opacity;
-      if (quoteSwap && index === A.cap) opacity = eased < 0.5 ? 1 - eased / 0.5 : 0;
-      else if (quoteSwap && index === B.cap) opacity = eased < 0.5 ? 0 : (eased - 0.5) / 0.5;
-      else {
-        const oa = A.cap === index ? 1 : 0;
-        const ob = B.cap === index ? 1 : 0;
-        opacity = oa + (ob - oa) * eased;
-      }
-      cap.style.opacity = String(opacity);
-    });
+    queueCap(B.cap);
     phone.style.transformOrigin = "center bottom";
     const phoneX = (A.x || 0) + ((B.x || 0) - (A.x || 0)) * eased;
     const rawScale = A.scale + (B.scale - A.scale) * eased;
@@ -1468,6 +1569,35 @@ function initMeetScrub() {
     return y;
   }
 
+  function talkBg() {
+    return document.querySelector(".talk-bg");
+  }
+
+  function parkBg(card, pinTop) {
+    const bg = talkBg();
+    if (!bg || !card) return;
+    if (!bg._home) bg._home = bg.parentElement;
+    if (bg._base == null) bg._base = parseFloat(bg.style.top) || 0;
+    if (pin._baseTop == null) pin._baseTop = 356.464;
+    if (bg.parentElement !== card) card.appendChild(bg);
+    const next = (pinTop - (pin._baseTop - bg._base)) + "px";
+    if (bg.style.top !== next) bg.style.top = next;
+    if (bg.style.position !== "absolute") bg.style.position = "absolute";
+    if (bg.style.left !== "0px") bg.style.left = "0px";
+    if (bg.style.zIndex !== "1") bg.style.zIndex = "1";
+  }
+
+  function unparkBg() {
+    const bg = talkBg();
+    if (!bg || !bg._home) return;
+    if (bg.parentElement !== bg._home) bg._home.appendChild(bg);
+    const base = (bg._base == null ? 256 : bg._base) + "px";
+    if (bg.style.top !== base) bg.style.top = base;
+    if (bg.style.left) bg.style.left = "";
+    if (bg.style.position) bg.style.position = "";
+    if (bg.style.zIndex) bg.style.zIndex = "";
+  }
+
   function parkAt(top) {
     const card = pin._card;
     if (!card) return;
@@ -1479,6 +1609,7 @@ function initMeetScrub() {
     if (pin.style.transform) pin.style.transform = "";
     if (pin.style.zIndex !== "2") pin.style.zIndex = "2";
     pin._parked = 1;
+    parkBg(card, top);
   }
 
   function unpark() {
@@ -1490,6 +1621,7 @@ function initMeetScrub() {
     if (pin.style.transform) pin.style.transform = "";
     if (pin.style.zIndex) pin.style.zIndex = "";
     pin._parked = 0;
+    unparkBg();
   }
 
   // «до 32» lives at the end of this block. Once it reaches the phone, keep it
@@ -1584,21 +1716,15 @@ function initMeetScrub() {
     }
     if (viewTop > room) viewTop = room;
     if (viewTop < cardTop) viewTop = cardTop;
-    // A tall viewport can place the centered rest above the park slot.
-    // Don't pull that first frame down onto the ceiling.
-    const aboveCeiling = rest < parkTop - 1 && shift > -2;
-    const hold = !hidden && !reduce.matches && cardVisible && natural <= parkTop && viewTop + phoneH > cardTop + 8 && !aboveCeiling;
+    // First frame of «Лента» is already the stuck slot. The phone does not
+    // rise into it.
+    const hold = !hidden && !reduce.matches && cardVisible && viewTop + phoneH > cardTop + 8;
     if (hold) {
       parkAt(Math.round(viewTop - cardTop));
       holdHours(card, cardTop, shift, viewTop + blockDesign, stickHours);
     } else {
       unpark();
       releaseHours();
-      if (card && pin.parentElement === pin._home) {
-        const homeTop = Math.round(layoutTop(pin._home, card));
-        const topPx = (rest - homeTop) + "px";
-        if (pin.style.top !== topPx) pin.style.top = topPx;
-      }
     }
     const pinRect = pin.getBoundingClientRect();
     const alice = document.querySelector('[data-section="alice"]');
@@ -1630,8 +1756,7 @@ function initMeetScrub() {
     const bottomVp = (parkTop + inset + phoneH) * zoom;
     const restFit = (bottomVp - 80) / ((phoneH + frameTop) * zoom);
     pin._rest = Math.min(1.45, Math.max(0.45, restFit));
-    const rise = natural - parkTop;
-    pin._arrive = rise <= 0 ? 1 : Math.max(0, 1 - rise / phoneH);
+    pin._arrive = 1;
     const fitKey = pin._arrive.toFixed(3) + ":" + pin._rest.toFixed(4);
     seek(performance.now(), sceneFor(dist));
     if (playing || !pin._painted || pin._scene !== to || pin._fitKey !== fitKey) {
@@ -1744,6 +1869,11 @@ function initSecuritySlider() {
         if (metrics) x = Math.min(item.max, Math.max(item.min, x));
       }
       place(item, x);
+      const fast = item.card.querySelector(".security-fast");
+      if (fast) {
+        const lead = reduce.matches ? 0 : Math.max(-72, Math.min(72, -0.55 * (scrolled - item.slot)));
+        fast.style.transform = "translateX(" + lead.toFixed(2) + "px)";
+      }
     });
   }
 
@@ -2812,20 +2942,20 @@ function initMemoryStack() {
 }
 
 const SMUT = [
-  ["Помогает<br>не&nbsp;потерять<br>важное", "Нескончаемые рабочие встречи и обсуждения, случайные диалоги и дружеские беседы, обещания и планы, договорённости и задачи — Яндекс Пин собирает всё происходящее вокруг тебя"],
-  ["Алиса AI<br>твой&nbsp;напарник", "Алиса AI помнит твои записи, задачи и разговоры — поэтому не нужно ничего объяснять заново, можно сразу перейти к делу."],
+  ["Помогает<br>не&nbsp;потерять<br>важное", "Нескончаемые рабочие встречи и обсуждения, случайные диалоги и дружеские беседы, обещания и планы, договорённости и задачи — Яндекс Пин собирает всё происходящее вокруг тебя"],
+  ["Алиса AI<br>твой&nbsp;напарник", "Алиса AI помнит твои записи, задачи и разговоры — поэтому не нужно ничего объяснять заново, можно сразу перейти к делу."],
   ["Оставайся в&nbsp;разговоре", "Уделяй внимание собеседникам, а не конспектированию встречи. Яндекс Пин сам зафиксирует и сохранит всё, что обсуждается"],
-  ["Всё важное — в&nbsp;Моей памяти", "С помощью функции Моя память Алиса AI в Яндекс Пине запоминает множество самых разных фактов из твоих ежедневных обсуждений и разговоров"],
-  ["Итоги дня", "В конце дня Алиса AI собирает общую картину: завершённые дела, новые задачи, обещания, важные моменты и приоритеты на завтра"],
+  ["Всё важное — в&nbsp;Моей памяти", "С помощью функции Моя память Алиса AI в Яндекс Пине запоминает множество самых разных фактов из твоих ежедневных обсуждений и разговоров"],
+  ["Итоги дня", "В конце дня Алиса AI собирает общую картину: завершённые дела, новые задачи, обещания, важные моменты и приоритеты на завтра"],
   ["Больше возможностей с&nbsp;подпиской", ""],
   ["Ювелирно<br>собран", ""],
-  ["Это<br>конфиденциально", "Безопасность и конфиденциальность ИИ-пина поддерживается на нескольких уровнях"]
+  ["Это<br>конфиденциально", "Безопасность и конфиденциальность ИИ-пина поддерживается на нескольких уровнях"]
 ];
 
 /* Композиции из макета: только выгруженные стрелка и плюс. «Ювелирно собран» — стрелка сверху и плюс снизу. «Итоги дня» — отдельный ряд плюс, стрелка, плюс. */
 const SMUT_LAYOUT = [
   { top: "arrow", bot: "pluses-column" },
-  { top: "arrow-plus", bot: "pluses-sides" },
+  null,
   { top: "arrow", bot: "pluses-row" },
   { top: "arrows-2", bot: "plus" },
   null,
@@ -2888,6 +3018,27 @@ function fillSmutZone(zone, spec) {
   }
 }
 
+function liftAliceContent(section) {
+  const head = [...section.children].find((el) => (el.textContent || "").replace(/\s+/g, " ").trim().startsWith("Находит ответы"));
+  if (!head) return;
+  const shift = parseFloat(head.style.top);
+  if (!Number.isFinite(shift) || shift < 8) return;
+  for (const el of section.children) {
+    const top = el.style.top;
+    if (!top || /calc|%/.test(top)) continue;
+    const n = parseFloat(top);
+    if (!Number.isFinite(n)) continue;
+    el.style.top = (n - shift) + "px";
+  }
+  const height = parseFloat(section.style.height);
+  if (Number.isFinite(height)) section.style.height = Math.max(0, height - shift) + "px";
+  const bg = section.querySelector('img[src*="alice-bg"]');
+  if (bg) {
+    bg.style.top = "0px";
+    bg.style.height = section.style.height;
+  }
+}
+
 function hideSmutDuplicates(content) {
   const titles = [
     "Помогает не потерять важное",
@@ -2918,6 +3069,15 @@ function hideSmutDuplicates(content) {
     if (subtitle && subtitle.tagName === "P") subtitle.classList.add("smut-dup");
     const after = (subtitle || node).nextElementSibling;
     if (after && /height:\s*680px/.test(after.getAttribute("style") || "")) after.classList.add("smut-dup");
+  }
+  for (const el of content.querySelectorAll("div")) {
+    const lines = [...el.children].filter((child) => child.tagName === "P");
+    if (lines.length < 2) continue;
+    const joined = lines.map((line) => plain(line)).join(" ");
+    if (!known.has(joined)) continue;
+    el.classList.add("smut-dup");
+    const body = el.nextElementSibling;
+    if (body && body.tagName === "P") body.classList.add("smut-dup");
   }
 }
 
@@ -3072,7 +3232,7 @@ function initStackCards() {
       arc.className = "stack-arc";
       const smut = document.createElement("div");
       const talk = index === 2;
-      smut.className = "smut" + (index === 1 ? " is-alice" : "") + (talk ? " is-talk" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "");
+      smut.className = "smut" + (index === 1 ? " is-alice" : "") + (talk ? " is-talk" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-private" : "");
       const copy = SMUT[index];
       const layout = SMUT_LAYOUT[index];
       const topZone = document.createElement("div");
@@ -3100,7 +3260,7 @@ function initStackCards() {
         photo.alt = "";
         photo.draggable = false;
         photo.src = "./assets/fig/product-overview.png";
-        smut.prepend(photo);
+        botZone.appendChild(photo);
       }
       if (talk) {
         const arrow = document.createElement("img");
@@ -3148,6 +3308,8 @@ function initStackCards() {
       hideSmutDuplicates(content);
       if (index === 1) {
         for (const img of content.querySelectorAll('img[src*="alice-puck"]')) img.hidden = true;
+        const alice = content.querySelector('[data-section="alice"]');
+        if (alice) liftAliceContent(alice);
       }
       card.appendChild(plate);
       card.appendChild(leadEl);
@@ -3164,10 +3326,11 @@ function initStackCards() {
       const top = parseFloat(child.dataset.stackTop) || parseFloat(child.style.top) || 0;
       lastBottom = Math.max(lastBottom, top + child.offsetHeight);
     }
-    footer.dataset.stackTop = String(lastBottom);
+    const footerTop = lastBottom + 120;
+    footer.dataset.stackTop = String(footerTop);
     footer.style.position = "absolute";
     footer.style.left = "0px";
-    footer.style.top = lastBottom + "px";
+    footer.style.top = footerTop + "px";
     footer.style.translate = "none";
     lastCard.content.appendChild(footer);
 
@@ -3274,7 +3437,7 @@ function initStackCards() {
       else if (t >= span.smut + span.content && t < span.total) mode = "leave";
       const on = mode !== "off";
       card.card.classList.toggle("is-pinned", on);
-      card.card.classList.toggle("is-live", mode === "scroll" || mode === "leave");
+      card.card.classList.toggle("is-live", mode === "exit" || mode === "scroll" || mode === "leave");
       put(card.card, "visibility", on ? "visible" : "hidden");
       put(card.card, "height", px(view) + "px");
       put(card.smut, "height", px(view) + "px");
@@ -3347,13 +3510,15 @@ function initStackCards() {
         for (const el of talk.children) {
           if (el === state.talkCopy) continue;
           const src = ((el.querySelector("img") || {}).getAttribute && el.querySelector("img").getAttribute("src")) || "";
-          if (el.classList.contains("talk-phone") || src.includes("talk-bg") || src.includes("pin-home") || src.includes("talk-start")) scene.push(el);
+          if (el.classList.contains("talk-phone") || el.classList.contains("talk-bg") || src.includes("talk-bg") || src.includes("pin-home") || src.includes("talk-start")) scene.push(el);
           else veil.push(el);
         }
       }
+      const parkedBg = document.querySelector(".talk-bg");
+      if (parkedBg && !scene.includes(parkedBg)) scene.push(parkedBg);
       state.talkVeil = veil;
       state.talkScene = scene;
-      state.talkSceneBg = scene.find((el) => {
+      state.talkSceneBg = parkedBg || scene.find((el) => {
         const img = el.querySelector("img");
         return img && (img.getAttribute("src") || "").includes("talk-bg");
       }) || null;
@@ -3593,4 +3758,61 @@ function initHeroVideo() {
 }
 
 initHeroVideo();
+initSchemeVideo();
 initStackCards();
+
+function initSchemeVideo() {
+  const shot = document.querySelector("[data-scheme-video]");
+  const video = shot && shot.querySelector("video");
+  if (!video) return;
+  video.loop = false;
+  video.muted = true;
+  video.autoplay = false;
+  video.pause();
+  const range = 1600;
+  let want = 0;
+  let pending = false;
+  let raf = 0;
+  function zoomOf() {
+    const stage = document.querySelector(".stage");
+    const n = stage ? parseFloat(getComputedStyle(stage).zoom) : 1;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+  function targetTime() {
+    if (!video.duration) return 0;
+    const top = shot.getBoundingClientRect().top / zoomOf();
+    const progress = Math.min(1, Math.max(0, -top / range));
+    return progress * video.duration;
+  }
+  function flush() {
+    if (!video.duration || pending) return;
+    if (Math.abs(video.currentTime - want) < 1 / 60) return;
+    pending = true;
+    const next = want;
+    const done = () => {
+      pending = false;
+      if (Math.abs(want - video.currentTime) >= 1 / 60) flush();
+    };
+    try {
+      video.currentTime = next;
+    } catch (e) {
+      pending = false;
+      return;
+    }
+    if (video.seeking) video.addEventListener("seeked", done, { once: true });
+    else requestAnimationFrame(done);
+  }
+  function tick() {
+    raf = 0;
+    want = targetTime();
+    flush();
+  }
+  function request() {
+    if (raf) return;
+    raf = requestAnimationFrame(tick);
+  }
+  video.addEventListener("loadedmetadata", request);
+  window.addEventListener("scroll", request, { passive: true });
+  window.addEventListener("resize", request);
+  request();
+}
