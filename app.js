@@ -1141,11 +1141,11 @@ function initMeetScrub() {
 
   const fullScale = 329.3 / 226.29;
   const blockDesign = 692;
-  const scrubDesign = 5600;
+  const scrubDesign = 5250;
   const animMs = 380;
   const askMs = 200;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const marks = [700, 1400, 2100, 2800, 3500, 4200, 4900, 5100];
+  const marks = [350, 1050, 1750, 2450, 3150, 3850, 4550, 4750];
   const scenes = [
     { shot: 0, cap: 0, scale: 1, jewel: 1, ask: 0, card: 0 },
     { shot: 1, cap: 1, scale: 1, jewel: 1, ask: 0, card: 0 },
@@ -3021,7 +3021,7 @@ function fillSmutZone(zone, spec) {
 function liftAliceContent(section) {
   const head = [...section.children].find((el) => (el.textContent || "").replace(/\s+/g, " ").trim().startsWith("Находит ответы"));
   if (!head) return;
-  const shift = parseFloat(head.style.top);
+  const shift = parseFloat(head.style.top) - 120;
   if (!Number.isFinite(shift) || shift < 8) return;
   for (const el of section.children) {
     const top = el.style.top;
@@ -3159,7 +3159,7 @@ function initStackCards() {
       hours.style.left = "auto";
       hours.style.top = "auto";
       hours.style.width = "190px";
-      hours.style.margin = "28px auto 8px";
+      hours.style.margin = "0 0 40px 24px";
       hardwareSlider.before(hours);
     }
     const heading = [...app.querySelectorAll(".talk-title")].find((el) => {
@@ -3320,6 +3320,28 @@ function initStackCards() {
       return { card, plate, content, arc, smut, origin, lead, leadEl, dock, memory, cover: plain || bare };
     });
     app.appendChild(host);
+    const schemeHold = document.querySelector("[data-scheme-hold]");
+    if (schemeHold && !schemeHold.dataset.expanded) {
+      const zoom = parseFloat(getComputedStyle(document.querySelector(".stage")).zoom) || 1;
+      const view = Math.max(1, window.innerHeight / zoom);
+      const extra = Math.max(0, view + 1600 - 588);
+      schemeHold.style.height = (view + 1600) + "px";
+      const pack = schemeHold.closest(".hardware-pack");
+      const base = pack ? parseFloat(pack.style.top) || 0 : 0;
+      const parent = pack && pack.parentElement;
+      if (parent) {
+        for (const el of parent.children) {
+          if (el === pack) continue;
+          const top = parseFloat(el.style.top);
+          if (Number.isFinite(top) && top > base) {
+            const next = top + extra;
+            el.style.top = next + "px";
+            el.dataset.stackTop = String(next);
+          }
+        }
+      }
+      schemeHold.dataset.expanded = "1";
+    }
     const lastCard = cards[cards.length - 1];
     let lastBottom = 0;
     for (const child of lastCard.content.children) {
@@ -3349,7 +3371,7 @@ function initStackCards() {
 
   function measure() {
     if (state.footer && !state.footer.dataset.cropped) {
-      const kept = Math.max(0, state.footer.offsetHeight - 260);
+      const kept = 701;
       state.footer.style.height = kept + "px";
       state.footer.style.overflow = "hidden";
       state.footer.dataset.cropped = "1";
@@ -3760,6 +3782,11 @@ function initHeroVideo() {
 initHeroVideo();
 initSchemeVideo();
 initStackCards();
+document.querySelector(".pin-plaque")?.addEventListener("click", () => {
+  const scroller = document.scrollingElement || document.documentElement;
+  window.scrollTo(0, 0);
+  scroller.scrollTop = 0;
+});
 
 function initSchemeVideo() {
   const shot = document.querySelector("[data-scheme-video]");
@@ -3780,9 +3807,15 @@ function initSchemeVideo() {
   }
   function targetTime() {
     if (!video.duration) return 0;
-    const top = shot.getBoundingClientRect().top / zoomOf();
-    const progress = Math.min(1, Math.max(0, -top / range));
-    return progress * video.duration;
+    const zoom = zoomOf();
+    const view = Math.max(1, window.innerHeight / zoom);
+    const hold = shot.parentElement;
+    shot.style.height = view + "px";
+    if (hold && hold.classList.contains("hardware-shot-hold")) hold.style.height = (view + range) + "px";
+    const top = hold ? hold.getBoundingClientRect().top : shot.getBoundingClientRect().top;
+    const pin = top < 0 ? Math.min(range, -top) : 0;
+    shot.style.transform = pin ? "translateY(" + pin + "px)" : "";
+    return (pin / range) * video.duration;
   }
   function flush() {
     if (!video.duration || pending) return;

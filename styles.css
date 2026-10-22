@@ -578,10 +578,13 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   gap: 6px;
   margin: 0;
   padding: 12px 20px 12px 12px;
+  border: 0;
   border-radius: 30px;
   background: #FFF;
   box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.06);
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+  appearance: none;
 }
 .pin-plaque-marks {
   display: flex;
@@ -661,7 +664,12 @@ body:has(#app[hidden]) .pin-plaque { display: none !important; }
   text-decoration: none;
   white-space: nowrap;
 }
-body:has(#app[hidden]) .buy-cta { display: none !important; }
+body:has(#terms:not([hidden])) .buy-cta-pos,
+body:has(#hardware:not([hidden])) .buy-cta-pos,
+body:has(#specs:not([hidden])) .buy-cta-pos {
+  z-index: 60;
+  bottom: 72px;
+}
 body:has(#app[hidden]) .signup { display: none !important; }
 body:has(#app[hidden]) .terms { display: none !important; }
 body:has(#app[hidden]) .hardware { display: none !important; }
@@ -1242,6 +1250,31 @@ body:has(#app[hidden]) .specs { display: none !important; }
   object-fit: contain;
   object-position: center;
 }
+.footer-disclaimer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  padding: 0 24px 16px;
+}
+.footer-disclaimer::before {
+  content: "";
+  display: block;
+  width: 327px;
+  height: 0;
+  border-top: 1px solid rgba(48, 43, 49, 0.12);
+  margin-bottom: 16px;
+}
+.footer-disclaimer p {
+  margin: 0;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 18px;
+  color: rgba(48, 43, 49, 0.48);
+}
 @media (prefers-reduced-motion: reduce) {
   .footer-wheel { transform: none; }
 }
@@ -1397,6 +1430,17 @@ body:has(#app[hidden]) .specs { display: none !important; }
   background: #e4f1fd;
   user-select: none;
   -webkit-user-select: none;
+}
+.itogi-strip {
+  width: 375px;
+  display: flex;
+  flex-direction: column;
+}
+.itogi-strip img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
 }
 .itogi-ui {
   width: 375px;
@@ -2089,8 +2133,15 @@ body:has(#app[hidden]) .specs { display: none !important; }
   width: 100%;
   margin-top: 48px;
 }
-.hardware-shot {
+.hardware-shot-hold {
   position: relative;
+  width: 375px;
+  flex-shrink: 0;
+}
+.hardware-shot {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 375px;
   height: 588px;
   overflow: hidden;
@@ -2136,16 +2187,27 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: 0 0 auto;
   width: 375px;
   max-width: 375px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
+  height: fit-content;
+  overflow: visible;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+.hardware-track {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 64px;
+  width: 100%;
+  padding: 0;
+}
+.hardware-card {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
 }
 .hardware-slider::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .hardware-slider.is-dragging { cursor: grabbing; }
@@ -2153,20 +2215,6 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .hardware-slider:focus-visible {
   outline: 2px solid rgba(48, 43, 49, 0.35);
   outline-offset: 2px;
-}
-.hardware-track {
-  display: flex;
-  align-items: flex-start;
-  gap: 48px;
-  width: max-content;
-  padding: 0 24px;
-}
-.hardware-card {
-  flex: 0 0 275px;
-  width: 275px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 .hardware-slider .hardware-track .hardware-card p:not(.hardware-card-title) {
   color: var(--type-and-icons-secondary, rgba(48, 43, 49, 0.48));
@@ -2179,10 +2227,10 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .hardware-slider .hardware-track .hardware-card p.hardware-card-title {
   color: var(--type-and-icons-primary, rgba(48, 43, 49, 0.90));
   font-family: var(--family-YS-Text-Compact, "YS Text Compact");
-  font-size: var(--font-size-title-S, 20px);
+  font-size: 17px;
   font-style: normal;
   font-weight: 400;
-  line-height: var(--line-height-title-S, 30px);
+  line-height: 24px;
   letter-spacing: 0;
 }
 .hardware-slider p {
@@ -3008,6 +3056,11 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .smut.is-alice {
   padding-left: 32px;
   padding-right: 32px;
+  overflow: visible;
+}
+.stack-card.is-plain,
+.stack-card.is-plain .stack-content {
+  overflow: visible;
 }
 .smut.is-alice .smut-zone.is-top {
   flex: 0 0 auto;
@@ -3020,6 +3073,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+  margin-top: 61.8px;
   container-type: size;
   overflow: visible;
 }

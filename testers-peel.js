@@ -98,10 +98,45 @@ if (cta) {
 
   function cancelTease() {
     teasing = false;
+    teaseGen += 1;
+    if (teaseDelay) {
+      clearTimeout(teaseDelay);
+      teaseDelay = 0;
+    }
     if (teaseTimer) {
       cancelAnimationFrame(teaseTimer);
       teaseTimer = 0;
     }
+  }
+
+  let teaseGen = 0;
+  let teaseDelay = 0;
+
+  const MOTION = {
+    origin: { x: 0.02, y: 0.5 },
+    target: { x: 0.28, y: 0.48 },
+  };
+
+  function resetPeel() {
+    cancelTease();
+    if (sticker) sticker.setPeelProgress(0, MOTION);
+  }
+
+  async function playTease() {
+    const gen = ++teaseGen;
+    teasing = true;
+    if (sticker) sticker.setPeelProgress(0, MOTION);
+    await new Promise((r) => {
+      teaseDelay = setTimeout(r, 900);
+    });
+    if (gen !== teaseGen || !teasing) return;
+    await animatePeel(0, 0.4, 700, MOTION);
+    if (gen !== teaseGen || !teasing) return;
+    await new Promise((r) => {
+      teaseDelay = setTimeout(r, 420);
+    });
+    if (gen !== teaseGen || !teasing) return;
+    await animatePeel(0.4, 0, 500, MOTION);
   }
 
   function animatePeel(from, to, ms, motion) {
@@ -120,20 +155,6 @@ if (cta) {
       };
       teaseTimer = requestAnimationFrame(tick);
     });
-  }
-
-  async function playTease() {
-    const motion = {
-      origin: { x: 0.02, y: 0.5 },
-      target: { x: 0.28, y: 0.48 },
-    };
-    await new Promise((r) => setTimeout(r, 900));
-    if (!teasing) return;
-    await animatePeel(0, 0.2, 700, motion);
-    if (!teasing) return;
-    await new Promise((r) => setTimeout(r, 420));
-    if (!teasing) return;
-    await animatePeel(0.2, 0, 500, motion);
   }
 
   function disableHintOverlays(engine) {
@@ -339,7 +360,19 @@ if (cta) {
       sticker.resize();
     });
 
-    playTease();
+    // threshold 0.5 alone never reports a full exit: crossing 0.5 downward
+    // still has isIntersecting true, and ratio 0 does not cross another
+    // threshold, so the curl stayed put for the next entrance.
+    let onScreen = false;
+    const watch = new IntersectionObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      const visible = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+      if (visible === onScreen) return;
+      onScreen = visible;
+      if (visible) playTease();
+      else resetPeel();
+    }, { threshold: [0, 0.5, 1] });
+    watch.observe(cta);
   }
 
   start().catch((error) => {
