@@ -1705,7 +1705,19 @@ function initMeetScrub() {
     const cardH = card ? (parseFloat(card.style.height) || view) : 0;
     const cardBottom = cardTop + cardH;
     const cardVisible = !!(card && getComputedStyle(card).visibility !== "hidden" && cardBottom > 24 && cardTop < view);
-    let viewTop = parkTop;
+    const trackCssNow = (pin._trackTop == null ? rest : pin._trackTop) + shift;
+    let progressNow = 0;
+    if (!hidden && !pin._under && !reduce.matches && track.offsetHeight > blockDesign + 1) {
+      if (trackCssNow > parkTop) progressNow = 0;
+      else if (trackCssNow + track.offsetHeight - blockDesign < parkTop) progressNow = 1;
+      else progressNow = Math.min(1, (parkTop - trackCssNow) / scrubDesign);
+    }
+    const distNow = progressNow >= 1 ? scrubDesign : Math.round(Math.min(scrubDesign, Math.max(0, progressNow * scrubDesign)));
+    const lastMark = marks[marks.length - 1];
+    // Last phone state is on screen. Further scroll carries the whole block
+    // up with the page instead of leaving it fixed over the sections below.
+    const pastLast = distNow >= lastMark;
+    let viewTop = pastLast ? trackCssNow + lastMark : parkTop;
     // Keep the whole phone block inside the sheet. Once the sheet bottom
     // climbs over the slot, pack «до 32» under the captions in what's left
     // so the plate cannot stay up empty. While the sheet still covers the
@@ -1713,7 +1725,7 @@ function initMeetScrub() {
     let room = cardBottom - blockDesign;
     const hours = card && document.querySelector(".record-hours");
     let stickHours = false;
-    if (hours && cardBottom < view - 2 && hours.closest(".stack-card") === card) {
+    if (!pastLast && hours && cardBottom < view - 2 && hours.closest(".stack-card") === card) {
       const base = cardTop + layoutTop(hours, card) + shift;
       // 252px from the hours line (85px into the lockup) to the rounded end.
       if (base < parkTop + blockDesign + 4) {
@@ -1721,14 +1733,17 @@ function initMeetScrub() {
         stickHours = true;
       }
     }
-    if (viewTop > room) viewTop = room;
-    if (viewTop < cardTop) viewTop = cardTop;
+    if (!pastLast) {
+      if (viewTop > room) viewTop = room;
+      if (viewTop < cardTop) viewTop = cardTop;
+    }
     // First frame of «Лента» is already the stuck slot. The phone does not
-    // rise into it.
-    const hold = !hidden && !reduce.matches && cardVisible && viewTop + phoneH > cardTop + 8;
+    // rise into it. After the last state the block may leave through the top.
+    const hold = !hidden && !reduce.matches && cardVisible && viewTop + blockDesign > cardTop + 8 && viewTop < view;
     if (hold) {
       parkAt(Math.round(viewTop - cardTop));
-      holdHours(card, cardTop, shift, viewTop + blockDesign, stickHours);
+      if (pastLast) releaseHours();
+      else holdHours(card, cardTop, shift, viewTop + blockDesign, stickHours);
     } else {
       unpark();
       releaseHours();
@@ -2952,9 +2967,6 @@ const SMUT = [
   ["Помогает<br>не&nbsp;потерять<br>важное", "Нескончаемые рабочие встречи и обсуждения, случайные диалоги и дружеские беседы, обещания и планы, договорённости и задачи — Яндекс Пин собирает всё происходящее вокруг тебя"],
   ["Алиса AI<br>твой&nbsp;напарник", "Алиса AI помнит твои записи, задачи и разговоры — поэтому не нужно ничего объяснять заново, можно сразу перейти к делу."],
   ["Оставайся в&nbsp;разговоре", "Уделяй внимание собеседникам, а не конспектированию встречи. Яндекс Пин сам зафиксирует и сохранит всё, что обсуждается"],
-  ["Всё важное — в&nbsp;Моей памяти", "С помощью функции Моя память Алиса AI в Яндекс Пине запоминает множество самых разных фактов из твоих ежедневных обсуждений и разговоров"],
-  ["Итоги дня", "В конце дня Алиса AI собирает общую картину: завершённые дела, новые задачи, обещания, важные моменты и приоритеты на завтра"],
-  ["Больше возможностей с&nbsp;подпиской", ""],
   ["Ювелирно<br>собран", ""],
   ["Это<br>конфиденциально", "Безопасность и конфиденциальность ИИ-пина поддерживается на нескольких уровнях"]
 ];
@@ -2964,9 +2976,6 @@ const SMUT_LAYOUT = [
   { top: "arrow", bot: "pluses-column" },
   null,
   { top: "arrow", bot: "pluses-row" },
-  { top: "arrows-2", bot: "plus" },
-  null,
-  { top: "pluses-3", bot: "pluses-3" },
   null,
   { top: "arrows-loose", bot: "arrow" }
 ];
@@ -3051,9 +3060,6 @@ function hideSmutDuplicates(content) {
     "Помогает не потерять важное",
     "Алиса AI твой напарник",
     "Оставайся в разговоре",
-    "Всё важное — в Моей памяти",
-    "Итоги дня",
-    "Больше возможностей с подпиской",
     "Ювелирно собран",
     "Это конфиденциально"
   ];
@@ -3231,14 +3237,12 @@ function initStackCards() {
     if (el.querySelector(".footer-specs")) return "footer";
     if (el.dataset.section === "alice") return 1;
     if (el.dataset.section === "talk") return 2;
-    if (el.dataset.section === "memory") return 3;
-    if (el.dataset.section === "itogi") return 4;
-    if (el.dataset.section === "plans") return 5;
-    if (el.classList.contains("hardware-pack")) return 6;
+    if (el.dataset.section === "memory" || el.dataset.section === "itogi" || el.dataset.section === "plans" || el.id === "plans") return 2;
+    if (el.classList.contains("hardware-pack")) return 3;
     const head = (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80);
     if (head.includes("Помогает") && head.includes("важное")) return 0;
-    if (head.includes("подпиской")) return 5;
-    if (head.includes("конфиденциально")) return 7;
+    if (head.includes("подпиской")) return 2;
+    if (head.includes("конфиденциально")) return 4;
     return null;
   }
 
@@ -3265,7 +3269,7 @@ function initStackCards() {
       hours.style.right = "auto";
       hours.style.top = "auto";
       hours.style.width = "190px";
-      hours.style.margin = "0 0 40px 24px";
+      hours.style.margin = "-400px 0 0 24px";
       hours.style.alignSelf = "flex-start";
       hardwareSlider.before(hours);
     }
@@ -3304,10 +3308,10 @@ function initStackCards() {
         continue;
       }
       if (typeof kind === "number") group = kind;
-      if (group >= 0 && group < 8) item.group = group;
+      if (group >= 0 && group < 5) item.group = group;
     }
 
-    const groups = [[], [], [], [], [], [], [], []];
+    const groups = [[], [], [], [], []];
     for (const item of tagged) {
       if (item.group >= 0) groups[item.group].push(item);
     }
@@ -3322,13 +3326,10 @@ function initStackCards() {
     const cards = groups.map((items, index) => {
       const card = document.createElement("div");
       const plain = index === 1;
-      const bare = index === 5;
-      const memory = index === 3;
-      const itogi = index === 4;
-      const hardware = index === 6;
-      const flush = index === 7;
+      const hardware = index === 3;
+      const flush = index === 4;
       const dock = index === 0;
-      card.className = "stack-card is-sheet" + (plain ? " is-plain" : "") + (bare ? " is-bare" : "") + (memory ? " is-memory" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-flush" : "") + (dock ? " is-dock" : "");
+      card.className = "stack-card is-sheet" + (plain ? " is-plain" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-flush" : "") + (dock ? " is-dock" : "");
       const plate = document.createElement("div");
       plate.className = "stack-plate";
       const leadEl = document.createElement("div");
@@ -3339,7 +3340,7 @@ function initStackCards() {
       arc.className = "stack-arc";
       const smut = document.createElement("div");
       const talk = index === 2;
-      smut.className = "smut" + (index === 1 ? " is-alice" : "") + (talk ? " is-talk" : "") + (itogi ? " is-itogi" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-private" : "");
+      smut.className = "smut" + (index === 1 ? " is-alice" : "") + (talk ? " is-talk" : "") + (hardware ? " is-hardware" : "") + (flush ? " is-private" : "");
       const copy = SMUT[index];
       const layout = SMUT_LAYOUT[index];
       const topZone = document.createElement("div");
@@ -3369,30 +3370,7 @@ function initStackCards() {
         photo.src = "./assets/fig/product-overview.png";
         botZone.appendChild(photo);
       }
-      if (talk) {
-        const arrow = document.createElement("img");
-        arrow.className = "smut-talk-arrow";
-        arrow.alt = "";
-        arrow.width = 15;
-        arrow.height = 15;
-        arrow.src = "./assets/fig/talk-arrow.svg";
-        const plus = (side) => {
-          const img = document.createElement("img");
-          img.className = "smut-talk-plus is-" + side;
-          img.alt = "";
-          img.width = 12;
-          img.height = 12;
-          img.src = "./assets/fig/talk-plus.svg";
-          return img;
-        };
-        smut.append(arrow, plus("left"), plus("center"), plus("right"));
-      }
-      if (itogi) {
-        const marks = document.createElement("div");
-        marks.className = "smut-itogi-marks";
-        marks.append(smutIcon("plus"), smutIcon("arrow"), smutIcon("plus"));
-        smut.append(marks);
-      }
+      /* «Оставайся в разговоре»: стрелка и плюсы убраны, остаются текст и фото. */
       if (hardware) {
         const arrow = smutIcon("arrow");
         arrow.classList.add("smut-hw-arrow");
@@ -3404,6 +3382,10 @@ function initStackCards() {
       const lead = index === 0 || plain ? 0 : 120;
       // «Помогает»: после шмуца первый блок контента на 120px. Сдвиг общий, зазоры внутри секции те же.
       const contentTop = index === 0 ? 120 : 0;
+      const measured = new Map();
+      if (talk) {
+        for (const item of items) measured.set(item.el, item.el.offsetHeight || parseFloat(item.el.style.height) || 0);
+      }
       items.forEach((item) => {
         item.el.style.position = "absolute";
         const top = item.y - origin + contentTop;
@@ -3412,6 +3394,28 @@ function initStackCards() {
         item.el.style.translate = "none";
         content.appendChild(item.el);
       });
+      if (talk) {
+        const blocks = ["memory", "itogi", "plans"].map((name) => content.querySelector('[data-section="' + name + '"]')).filter(Boolean);
+        let floor = 0;
+        for (const el of content.children) {
+          if (blocks.includes(el) || el.id === "plans") continue;
+          const top = parseFloat(el.dataset.stackTop) || 0;
+          floor = Math.max(floor, top + (measured.get(el) || 0));
+        }
+        let cursor = floor + 100;
+        for (const el of blocks) {
+          el.style.top = cursor + "px";
+          el.dataset.stackTop = String(cursor);
+          if (el.dataset.section === "plans") {
+            const anchor = content.querySelector("span#plans");
+            if (anchor) {
+              anchor.style.top = cursor + "px";
+              anchor.dataset.stackTop = String(cursor);
+            }
+          }
+          cursor += (measured.get(el) || 0) + 100;
+        }
+      }
       hideSmutDuplicates(content);
       gapBelowSlider(content);
       if (index === 1) {
@@ -3428,7 +3432,7 @@ function initStackCards() {
       card.appendChild(arc);
       card.appendChild(smut);
       host.appendChild(card);
-      return { card, plate, content, arc, smut, origin, lead, leadEl, dock, memory, cover: plain || bare };
+      return { card, plate, content, arc, smut, origin, lead, leadEl, dock, cover: plain };
     });
     app.appendChild(host);
     const schemeHold = document.querySelector("[data-scheme-hold]");
@@ -3532,7 +3536,7 @@ function initStackCards() {
 
   function measure() {
     if (state.footer && !state.footer.dataset.cropped) {
-      const kept = 701;
+      const kept = 961;
       state.footer.style.height = kept + "px";
       state.footer.style.overflow = "hidden";
       state.footer.dataset.cropped = "1";
@@ -3975,14 +3979,15 @@ document.querySelector(".pin-plaque")?.addEventListener("click", () => {
 
 function initSchemeVideo() {
   const shot = document.querySelector("[data-scheme-video]");
-  const video = shot && shot.querySelector("video");
-  if (!video) return;
-  video.loop = false;
-  video.muted = true;
-  video.autoplay = false;
-  video.preload = "auto";
-  video.pause();
+  const frame = shot && shot.querySelector(".scheme-frame");
+  if (!frame) return;
   const range = 1600;
+  const frameCount = 301;
+  const srcOf = (index) => "./assets/fig/scheme-frames/f" + String(index).padStart(3, "0") + ".webp?v=pass47";
+  for (let i = 1; i <= frameCount; i++) {
+    const preload = new Image();
+    preload.src = srcOf(i);
+  }
   let want = 0;
   let sized = "";
   function zoomOf() {
@@ -4037,28 +4042,17 @@ function initSchemeVideo() {
     shot.style.zIndex = "";
     shot.style.top = next === "after" ? range + "px" : "0px";
   }
-  function canSeek() {
-    if (!video.seekable || !video.seekable.length) return false;
-    return video.readyState >= 2 && video.seekable.end(0) > 0.05;
-  }
-  function flush() {
-    if (!canSeek()) return;
-    if (Math.abs(video.currentTime - want) < 1 / 60) return;
-    const next = want;
-    try {
-      if (typeof video.fastSeek === "function") video.fastSeek(next);
-      else video.currentTime = next;
-    } catch (e) {
-      try { video.currentTime = next; } catch (err) {}
-    }
-  }
+  let shown = 0;
   function tick() {
     if (anchor < 0) anchor = anchorOf();
     const raw = contentUp() - anchor;
     const pin = Math.min(range, Math.max(0, raw));
     place(raw <= 0 ? "before" : raw >= range ? "after" : "pin");
-    if (video.duration && isFinite(video.duration)) want = (pin / range) * video.duration;
-    flush();
+    const index = Math.round((pin / range) * (frameCount - 1)) + 1;
+    if (index !== shown) {
+      shown = index;
+      frame.src = srcOf(index);
+    }
   }
   window.__pinScheme = tick;
   function onResize() {
@@ -4068,7 +4062,6 @@ function initSchemeVideo() {
     tick();
   }
   layout();
-  video.addEventListener("loadedmetadata", tick);
   window.addEventListener("resize", onResize);
   tick();
 }

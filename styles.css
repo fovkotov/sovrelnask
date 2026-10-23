@@ -81,7 +81,7 @@ a { color: inherit; }
   --hero-h: max(280px, calc(var(--screen-h) - (32px + 64px + 12px + 44px + 32px + 53px + 8px)));
   --hero-video-h: calc(var(--hero-h) * 578.377 / 464);
   --flow-shift: calc(var(--hero-h) - 472px);
-  --cards-pin: 6000px;
+  --cards-pin: 4500px;
   --intro-cards-grow: 150px;
 }
 @media (max-width: 768px) {
@@ -567,7 +567,7 @@ body:has(#app[hidden]) .meet-pin { display: none !important; }
   white-space: normal;
   font-feature-settings: normal;
 }
-.feature-cards { top: calc(var(--hero-h) + 32px + 64px + 12px + 44px + 120px); }
+.feature-cards { top: calc(var(--hero-h) + 32px + 64px + 12px + 44px + 100px); }
 .pin-plaque {
   position: fixed;
   z-index: 35;
@@ -1247,7 +1247,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   top: 0;
   left: 0;
   width: 375px;
-  height: 370px;
+  height: 510px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
@@ -1264,7 +1264,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 120px;
   z-index: 2;
   box-sizing: border-box;
   padding: 0 24px 16px;
@@ -1419,7 +1419,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .itogi-phone {
   position: absolute;
   left: 61.32px;
-  top: 207px;
+  top: 176px;
   width: 251.358px;
   height: 546.486px;
   touch-action: none;
@@ -1484,7 +1484,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .itogi-track {
   position: absolute;
   left: 338.5px;
-  top: 227.742px;
+  top: 196.742px;
   width: 11px;
   height: 505px;
   border-radius: 80px;
@@ -1566,11 +1566,42 @@ body:has(#app[hidden]) .specs { display: none !important; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 64px;
+  gap: 48px;
   width: 375px;
-  padding: 120px 0;
+  padding: 0 0 24px;
   background: #dbdfe7;
   border-radius: 120px;
+}
+.plans-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  padding: 0 80px 0 32px;
+  box-sizing: border-box;
+}
+.plans-title,
+.plans-lead {
+  margin: 0;
+  width: 100%;
+  text-align: left;
+}
+.plans-title {
+  font-family: "YS Compressed", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+  font-size: 30px;
+  line-height: 32px;
+  font-feature-settings: "ss01" on;
+  color: rgba(48, 43, 49, 0.9);
+}
+.plans-lead {
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 22px;
+  color: rgba(48, 43, 49, 0.9);
 }
 .plans-sheet-cards {
   display: flex;
@@ -1608,7 +1639,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .memory-scene-bg {
   position: absolute;
   left: -550px;
-  top: -82px;
+  top: -232px;
   width: 1318px;
   height: 443px;
   overflow: hidden;
@@ -1929,7 +1960,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   font-weight: 400;
   font-size: 15px;
   line-height: 22px;
-  text-align: center;
+  text-align: left;
   color: rgba(48, 43, 49, 0.9);
 }
 .memory-slider {
@@ -2105,13 +2136,14 @@ body:has(#app[hidden]) .specs { display: none !important; }
   translate: var(--memory-shift, 0px) 0px;
 }
 .memory-caption {
-  padding: 0 16px;
+  width: 320px;
+  padding: 0;
   font-family: "YS Text Compact", sans-serif;
   font-weight: 400;
   font-size: 15px;
   line-height: 22px;
   color: rgba(48, 43, 49, 0.9);
-  text-align: center;
+  text-align: left;
 }
 .memory-slider img {
   -webkit-user-drag: none;
@@ -2176,7 +2208,8 @@ body:has(#app[hidden]) .specs { display: none !important; }
   object-fit: cover;
   transform: rotate(66.16deg);
 }
-.hardware-shot video {
+.hardware-shot video,
+.hardware-shot .scheme-frame {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2208,7 +2241,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 64px;
+  gap: 48px;
   width: 100%;
   padding: 0;
 }
@@ -2231,7 +2264,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .record-hours {
   align-self: flex-start;
   width: 190px;
-  margin: 0 0 40px 24px;
+  margin: 0 0 0 24px;
 }
 .hardware-slider .hardware-track .hardware-card p {
   width: 100%;
@@ -2290,28 +2323,31 @@ body:has(#app[hidden]) .specs { display: none !important; }
   z-index: 3;
 }
 .design-cluster {
-  position: absolute;
-  left: -214.072265625px;
-  top: -8.641px;
-  width: 839.7822875976562px;
-  height: 839.7822875976562px;
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 375px;
+  height: auto;
+  margin-top: 48px;
   z-index: 1;
   pointer-events: none;
 }
 .design-cluster img {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  inset: auto;
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   max-width: none;
-  object-fit: cover;
+  object-fit: contain;
   pointer-events: none;
 }
 .device-slider {
   --device-rest: 205.96875;
-  position: absolute;
-  left: 0.015625px;
-  top: 741px;
+  position: relative;
+  left: 0;
+  top: auto;
+  margin-top: 24px;
   z-index: 2;
   flex-shrink: 0;
   width: 375px;
@@ -2573,12 +2609,14 @@ body:has(#app[hidden]) .specs { display: none !important; }
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 64px;
+  gap: 32px;
 }
 .faq-title {
   width: 327px;
+  padding-left: 16px;
+  box-sizing: border-box;
   color: rgba(48, 43, 49, 0.9);
-  text-align: center;
+  text-align: left;
   font-feature-settings: "ss01" 1;
   font-family: "YS Compressed", var(--family-YS-Compressed, "YS Text"), sans-serif;
   font-size: 30px;
@@ -3027,7 +3065,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
 .smut.is-private .smut-copy {
   width: 100%;
 }
-/* Шмуцы кроме Алисы: фото на фоне, заголовок по центру, текст снизу 13px. */
+/* Шмуцы кроме Алисы: фото на фоне, заголовок и подпись по центру, между ними 24px. */
 .smut:not(.is-alice)::before {
   content: "";
   position: absolute;
@@ -3053,29 +3091,44 @@ body:has(#app[hidden]) .specs { display: none !important; }
   display: none;
 }
 .smut:not(.is-alice) .smut-copy {
-  position: static;
-  width: 0;
-  height: 0;
-  gap: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 311px;
+  height: auto;
+  margin: 0;
+  transform: translate(-50%, -50%);
   overflow: visible;
 }
 .smut:not(.is-alice) .smut-title {
-  position: absolute;
-  left: 50%;
-  top: calc(50% + 63px);
+  position: static;
+  top: auto;
+  left: auto;
   z-index: 1;
   width: 311px;
-  transform: translate(-50%, -100%);
+  margin: 0;
+  transform: none;
+  text-align: center;
 }
 .smut:not(.is-alice) .smut-body {
-  position: absolute;
-  left: 50%;
-  top: calc(50% + 137px);
+  position: static;
+  top: auto;
+  left: auto;
   z-index: 1;
   width: 311px;
-  transform: translateX(-50%);
-  font-size: 13px;
-  line-height: 18px;
+  margin: 0;
+  transform: none;
+  text-align: center;
+  font-family: "YS Text Compact", sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 22px;
   color: #fff;
 }
 .workflow-copy {
@@ -3170,14 +3223,14 @@ body:has(#app[hidden]) .specs { display: none !important; }
   flex: 0 0 auto;
   min-height: 0;
   justify-content: flex-start;
-  padding-top: 48px;
+  padding-top: 92px;
   padding-bottom: 28px;
 }
 .smut.is-alice .smut-zone.is-bot {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
-  margin-top: 61.8px;
+  margin-top: 99.8px;
   container-type: size;
   overflow: visible;
 }
@@ -3279,10 +3332,32 @@ body:has(#app[hidden]) .specs { display: none !important; }
   height: 57px;
   z-index: 2;
 }
+.beta-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+}
+.beta-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  padding-right: 32px;
+  box-sizing: border-box;
+}
+.testers-cta-fit {
+  width: 254px;
+  height: 45px;
+  position: relative;
+  flex: none;
+}
 .testers-cta.tap,
 .testers-cta.tap:hover,
 .testers-cta.tap:active {
-  transform: none;
+  transform: scale(0.78);
+  transform-origin: top left;
   transition: none;
 }
 .testers-cta-dot {
