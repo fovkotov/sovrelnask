@@ -1264,8 +1264,7 @@ body:has(#app[hidden]) .specs { display: none !important; }
   position: absolute;
   left: 0;
   right: 0;
-  top: 554px;
-  bottom: auto;
+  bottom: 0;
   z-index: 2;
   box-sizing: border-box;
   padding: 0 24px 16px;
@@ -3027,6 +3026,88 @@ body:has(#app[hidden]) .specs { display: none !important; }
 }
 .smut.is-private .smut-copy {
   width: 100%;
+}
+/* Шмуцы кроме Алисы: фото на фоне, заголовок по центру, текст снизу 13px. */
+.smut:not(.is-alice)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0.48)),
+    url("./assets/fig/smut-bg.png") center / cover no-repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+.smut:not(.is-alice) {
+  padding: 0;
+}
+.smut:not(.is-alice) .smut-zone,
+.smut:not(.is-alice) .smut-talk-arrow,
+.smut:not(.is-alice) .smut-talk-plus,
+.smut:not(.is-alice) .smut-itogi-marks,
+.smut:not(.is-alice) .smut-hw-arrow,
+.smut:not(.is-alice) .smut-hw-plus {
+  display: none;
+}
+.smut:not(.is-alice) .smut-copy {
+  position: static;
+  width: 0;
+  height: 0;
+  gap: 0;
+  overflow: visible;
+}
+.smut:not(.is-alice) .smut-title {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 63px);
+  z-index: 1;
+  width: 311px;
+  transform: translate(-50%, -100%);
+}
+.smut:not(.is-alice) .smut-body {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 137px);
+  z-index: 1;
+  width: 311px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 18px;
+  color: #fff;
+}
+.workflow-copy {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 293px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.workflow-title,
+.workflow-body {
+  margin: 0;
+  width: 100%;
+  font-family: "YS Text Compact", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+.workflow-title {
+  font-size: 17px;
+  line-height: 24px;
+  color: rgba(48, 43, 49, 0.9);
+}
+.workflow-body {
+  font-size: 13px;
+  line-height: 18px;
+  color: rgba(48, 43, 49, 0.48);
 }
 .smut-zone {
   flex: 1 1 0;

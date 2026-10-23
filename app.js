@@ -3088,6 +3088,103 @@ function hideSmutDuplicates(content) {
   }
 }
 
+function placeWorkflowCopy() {
+  const stack = document.querySelector("[data-flip-stack]");
+  if (!stack || stack.dataset.workflow) return;
+  const layer = stack.closest(".layer");
+  let outer = stack;
+  while (outer.parentElement && outer.parentElement !== layer) outer = outer.parentElement;
+  if (!layer || outer === stack) return;
+  stack.dataset.workflow = "1";
+  const copy = document.createElement("div");
+  copy.className = "workflow-copy";
+  const title = document.createElement("p");
+  title.className = "workflow-title";
+  title.innerHTML = "Если утопаешь<br>в&nbsp;проектах и задачах";
+  const body = document.createElement("p");
+  body.className = "workflow-body";
+  body.innerHTML = "Яндекс Пин упорядочивает твой ежедневный рабочий хаос и помогает сосредоточиться на&nbsp;действительно важном";
+  copy.append(title, body);
+  outer.appendChild(copy);
+  const shift = copy.offsetHeight + 48;
+  for (const child of outer.children) {
+    if (child === copy) continue;
+    const n = parseFloat(child.style.top);
+    child.style.top = ((Number.isFinite(n) ? n : 0) + shift) + "px";
+  }
+  const pager = outer.querySelector(".ctx-pager");
+  const hang = pager ? Math.max(0, Math.round(pager.getBoundingClientRect().bottom - stack.getBoundingClientRect().bottom)) : 0;
+  const height = shift + stack.offsetHeight + hang;
+  outer.style.height = height + "px";
+  const boxTop = parseFloat(outer.style.top);
+  if (!Number.isFinite(boxTop)) return;
+  const later = [];
+  for (const el of outer.parentElement.children) {
+    if (el === outer) continue;
+    const top = el.style.top;
+    if (!top || /calc|%/.test(top)) continue;
+    const n = parseFloat(top);
+    if (Number.isFinite(n) && n > boxTop + 1) later.push({ el, n });
+  }
+  if (!later.length) return;
+  later.sort((a, b) => a.n - b.n);
+  const delta = boxTop + height + 120 - later[0].n;
+  if (delta > 1) {
+    for (const item of later) item.el.style.top = (item.n + delta) + "px";
+  }
+}
+
+function padAliceEnd(section) {
+  if (!section || section.dataset.padded) return;
+  section.dataset.padded = "1";
+  const height = parseFloat(section.style.height);
+  if (Number.isFinite(height)) section.style.height = (height + 120) + "px";
+  const bg = section.querySelector('img[src*="alice-bg"]');
+  if (bg) {
+    const bh = parseFloat(bg.style.height);
+    if (Number.isFinite(bh)) bg.style.height = (bh + 120) + "px";
+  }
+  const parent = section.parentElement;
+  const floor = parseFloat(section.style.top);
+  if (!parent || !Number.isFinite(floor)) return;
+  for (const el of parent.children) {
+    if (el === section) continue;
+    const top = parseFloat(el.dataset.stackTop || el.style.top);
+    if (!Number.isFinite(top) || top <= floor + 1) continue;
+    const next = top + 120;
+    el.style.top = next + "px";
+    el.dataset.stackTop = String(next);
+  }
+}
+
+function gapBelowSlider(content) {
+  const stack = content.querySelector("[data-flip-stack]");
+  if (!stack) return;
+  const box = stack.closest(".stack-content > *");
+  if (!box || box.dataset.gapped) return;
+  box.dataset.gapped = "1";
+  const boxTop = parseFloat(box.style.top) || 0;
+  const bottom = boxTop + (parseFloat(box.style.height) || box.offsetHeight || 0);
+  let nextTop = Infinity;
+  for (const el of content.children) {
+    if (el === box) continue;
+    const top = parseFloat(el.style.top);
+    if (!Number.isFinite(top) || top <= boxTop + 1) continue;
+    if (top < nextTop) nextTop = top;
+  }
+  if (!Number.isFinite(nextTop)) return;
+  const delta = bottom + 120 - nextTop;
+  if (delta <= 1) return;
+  for (const el of content.children) {
+    if (el === box) continue;
+    const top = parseFloat(el.dataset.stackTop || el.style.top);
+    if (!Number.isFinite(top) || top <= boxTop + 1) continue;
+    const next = top + delta;
+    el.style.top = next + "px";
+    el.dataset.stackTop = String(next);
+  }
+}
+
 function initStackCards() {
   const app = document.getElementById("app");
   const layer = app && app.querySelector(".layer");
@@ -3158,6 +3255,7 @@ function initStackCards() {
   }
 
   if (!initStackCards.state) {
+    placeWorkflowCopy();
     const hours = document.querySelector(".record-hours");
     const hardwareBody = document.querySelector(".hardware-pack-body");
     const hardwareSlider = hardwareBody && hardwareBody.querySelector(".hardware-slider");
@@ -3315,10 +3413,14 @@ function initStackCards() {
         content.appendChild(item.el);
       });
       hideSmutDuplicates(content);
+      gapBelowSlider(content);
       if (index === 1) {
         for (const img of content.querySelectorAll('img[src*="alice-puck"]')) img.hidden = true;
         const alice = content.querySelector('[data-section="alice"]');
-        if (alice) liftAliceContent(alice);
+        if (alice) {
+          liftAliceContent(alice);
+          padAliceEnd(alice);
+        }
       }
       card.appendChild(plate);
       card.appendChild(leadEl);
@@ -3430,7 +3532,7 @@ function initStackCards() {
 
   function measure() {
     if (state.footer && !state.footer.dataset.cropped) {
-      const kept = 554;
+      const kept = 701;
       state.footer.style.height = kept + "px";
       state.footer.style.overflow = "hidden";
       state.footer.dataset.cropped = "1";
